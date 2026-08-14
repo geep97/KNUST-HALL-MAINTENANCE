@@ -5,51 +5,72 @@ namespace KnustHallMaintenance.Data;
 
 public static class DbInitializer
 {
-    public static void Seed(ApplicationDbContext context, IPasswordHasher<ApplicationUser> hasher)
+    public static void Seed(
+        ApplicationDbContext context,
+        IPasswordHasher<ApplicationUser> hasher)
     {
-        if (context.Users.Any()) return;
+        // ============================================================
+        // ADMIN
+        // ============================================================
 
-        var student = new ApplicationUser
+        if (!context.Users.Any(u => u.Role == UserRole.Admin))
         {
-            FullName = "Kwame Mensah",
-            Email = "student@knust.edu.gh",
-            Role = UserRole.Student,
-            Hall = "Unity Hall",
-            RoomNumber = "B12"
-        };
-        student.PasswordHash = hasher.HashPassword(student, "Password123!");
+            var admin = new ApplicationUser
+            {
+                FullName = "System Administrator",
+                Email = "admin@knust.edu.gh",
+                Role = UserRole.Admin
+            };
 
-        var staff = new ApplicationUser
+            admin.PasswordHash =
+                hasher.HashPassword(admin, "Admin123!");
+
+            context.Users.Add(admin);
+        }
+
+
+        // ============================================================
+        // HALL STAFF
+        // ============================================================
+
+        if (!context.Users.Any(u => u.Role == UserRole.HallStaff))
         {
-            FullName = "Hall Assistant - Unity Hall",
-            Email = "staff@knust.edu.gh",
-            Role = UserRole.Staff
-        };
-        staff.PasswordHash = hasher.HashPassword(staff, "Password123!");
+            var staff = new ApplicationUser
+            {
+                FullName = "Hall Assistant - Unity Hall",
+                Email = "staff@knust.edu.gh",
+                Role = UserRole.HallStaff,
+                Hall = "Unity Hall"
+            };
 
-        var technician = new ApplicationUser
+            staff.PasswordHash =
+                hasher.HashPassword(staff, "Password123!");
+
+            context.Users.Add(staff);
+        }
+
+
+        // ============================================================
+        // MAINTENANCE PERSONNEL
+        // ============================================================
+
+        if (!context.Users.Any(u => u.Role == UserRole.Maintenance))
         {
-            FullName = "John Boateng (Electrician)",
-            Email = "maintenance@knust.edu.gh",
-            Role = UserRole.Maintenance
-        };
-        technician.PasswordHash = hasher.HashPassword(technician, "Password123!");
+            var technician = new ApplicationUser
+            {
+                FullName = "John Boateng (Electrician)",
+                Email = "maintenance@knust.edu.gh",
+                Role = UserRole.Maintenance
+            };
 
-        context.Users.AddRange(student, staff, technician);
-        context.SaveChanges();
+            technician.PasswordHash =
+                hasher.HashPassword(technician, "Password123!");
 
-        var complaint = new Complaint
-        {
-            StudentId = student.Id,
-            Category = ComplaintCategory.Electrical,
-            Description = "No light in the room since Monday. Suspect a tripped breaker or a faulty socket near the reading desk.",
-            Hall = student.Hall!,
-            RoomNumber = student.RoomNumber!,
-            Status = ComplaintStatus.Submitted,
-            DateCreated = DateTime.Now.AddDays(-2)
-        };
+            context.Users.Add(technician);
+        }
 
-        context.Complaints.Add(complaint);
+
+        // Save Admin / Staff / Maintenance
         context.SaveChanges();
     }
 }

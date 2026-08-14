@@ -1,0 +1,272 @@
+﻿@model IEnumerable<KnustHallMaintenance.Models.ApplicationUser>
+
+@using KnustHallMaintenance.Models
+
+@{
+    var totalUsers = Model.Count();
+
+    var hallStaffCount =
+        Model.Count(u => u.Role == UserRole.HallStaff);
+
+    var maintenanceCount =
+        Model.Count(u => u.Role == UserRole.Maintenance);
+
+    var adminCount =
+        Model.Count(u => u.Role == UserRole.Admin);
+}
+
+<div class="page-header">
+
+    <div class="eyebrow">
+        Administration
+    </div>
+
+    <h2>
+        Hall Maintenance Administration
+    </h2>
+
+    <p>
+        Manage users and access to the hall maintenance portal.
+    </p>
+
+</div>
+
+
+<!-- =========================================================
+     SUMMARY
+     ========================================================= -->
+
+<div class="row g-3 mb-4">
+
+    <!-- TOTAL USERS -->
+
+    <div class="col-md-3">
+
+        <div class="metric-card">
+
+            <div class="metric-label">
+                Total Users
+            </div>
+
+            <div class="metric-value">
+                @totalUsers
+            </div>
+
+            <div class="metric-note">
+                All portal accounts
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- HALL STAFF -->
+
+    <div class="col-md-3">
+
+        <div class="metric-card">
+
+            <div class="metric-label">
+                Hall Staff
+            </div>
+
+            <div class="metric-value">
+                @hallStaffCount
+            </div>
+
+            <div class="metric-note">
+                Hall staff accounts
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- MAINTENANCE -->
+
+    <div class="col-md-3">
+
+        <div class="metric-card">
+
+            <div class="metric-label">
+                Maintenance
+            </div>
+
+            <div class="metric-value">
+                @maintenanceCount
+            </div>
+
+            <div class="metric-note">
+                Maintenance personnel
+            </div>
+
+        </div>
+
+    </div>
+
+
+    <!-- ADMINISTRATORS -->
+
+    <div class="col-md-3">
+
+        <div class="metric-card">
+
+            <div class="metric-label">
+                Administrators
+            </div>
+
+            <div class="metric-value">
+                @adminCount
+            </div>
+
+            <div class="metric-note">
+                System administrators
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+<!-- =========================================================
+     USERS
+     ========================================================= -->
+
+<div class="card-soft">
+
+    <div class="p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3">
+
+        <div>
+
+            <div class="section-title">
+                Portal Users
+            </div>
+
+            <div class="small text-muted mt-1">
+                Accounts currently registered in the system.
+            </div>
+
+        </div>
+
+
+        <a asp-controller="Admin"
+           asp-action="CreateUser"
+           class="btn btn-knust">
+
+            + Add User
+
+        </a>
+
+    </div>
+
+
+    <div class="table-shell">
+
+        <table class="table">
+
+            <thead>
+
+                <tr>
+
+                    <th>
+                        Name
+                    </th>
+
+                    <th>
+                        Email
+                    </th>
+
+                    <th>
+                        Role
+                    </th>
+
+                    <th>
+                        Hall
+                    </th>
+
+                    <th>
+                        Room
+                    </th>
+
+                </tr>
+
+            </thead>
+
+
+            <tbody>
+
+                @foreach (var user in Model)
+                {
+                    <tr>
+
+                        <!-- NAME -->
+
+                        <td>
+
+                            <strong>
+                                @user.FullName
+                            </strong>
+
+                        </td>
+
+
+                        <!-- EMAIL -->
+
+                        <td>
+                            @user.Email
+                        </td>
+
+
+                        <!-- ROLE -->
+
+                        <td>
+
+                            @if (user.Role == UserRole.Admin)
+                            {
+                                <span class="status-badge badge-assigned">
+                                    Admin
+                                </span>
+                            }
+                            else if (user.Role == UserRole.Maintenance)
+                            {
+                                <span class="status-badge badge-inprogress">
+                                    Maintenance
+                                </span>
+                            }
+                            else if (user.Role == UserRole.HallStaff)
+                            {
+                                <span class="status-badge badge-submitted">
+                                    Hall Staff
+                                </span>
+                            }
+
+                        </td>
+
+
+                        <!-- HALL -->
+
+                        <td>
+                            @(user.Hall ?? "—")
+                        </td>
+
+
+                        <!-- ROOM -->
+
+                        <td>
+                            @(user.RoomNumber ?? "—")
+                        </td>
+
+                    </tr>
+                }
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+</div>

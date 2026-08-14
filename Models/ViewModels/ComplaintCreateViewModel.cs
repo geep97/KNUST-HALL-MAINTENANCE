@@ -5,27 +5,24 @@ namespace KnustHallMaintenance.Models.ViewModels;
 
 public class ComplaintCreateViewModel
 {
-    [Required]
+    [Required(ErrorMessage = "Please select a complaint category.")]
     public ComplaintCategory Category { get; set; }
 
 
-    [Required]
+    [Required(ErrorMessage = "Please describe the issue.")]
     [StringLength(
-        1000,
-        MinimumLength = 10,
-        ErrorMessage = "Please give a bit more detail (at least 10 characters)."
+        2000,
+        ErrorMessage = "The description cannot exceed 2000 characters."
     )]
     public string Description { get; set; } = string.Empty;
 
 
-    [Required]
-    public string Hall { get; set; } = string.Empty;
+    
+
+    public string? Hall { get; set; }
+
+    public string? RoomNumber { get; set; }
 
 
-    [Required]
-    public string RoomNumber { get; set; } = string.Empty;
-
-
-    // Optional photo
     public IFormFile? Photo { get; set; }
 }

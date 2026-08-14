@@ -4,22 +4,62 @@ public class Complaint
 {
     public int Id { get; set; }
 
+
+    // =========================================================
+    // STUDENT
+    // =========================================================
+
     public int StudentId { get; set; }
-    public ApplicationUser? Student { get; set; }
+
+    public Student? Student { get; set; }
+
+
+    // =========================================================
+    // COMPLAINT DETAILS
+    // =========================================================
 
     public ComplaintCategory Category { get; set; }
+
     public string Description { get; set; } = string.Empty;
+
     public string Hall { get; set; } = string.Empty;
+
     public string RoomNumber { get; set; } = string.Empty;
+
     public string? PhotoPath { get; set; }
 
-    public ComplaintStatus Status { get; set; } = ComplaintStatus.Submitted;
+
+    // =========================================================
+    // STATUS
+    // =========================================================
+
+    public ComplaintStatus Status { get; set; }
+        = ComplaintStatus.Submitted;
+
+
+    // =========================================================
+    // ASSIGNMENT
+    // =========================================================
 
     public int? AssignedToId { get; set; }
+
     public ApplicationUser? AssignedTo { get; set; }
 
-    public DateTime DateCreated { get; set; } = DateTime.Now;
+
+    // =========================================================
+    // DATES
+    // =========================================================
+
+    public DateTime DateCreated { get; set; }
+        = DateTime.Now;
+
     public DateTime? DateResolved { get; set; }
 
-    public ICollection<ComplaintUpdate> Updates { get; set; } = new List<ComplaintUpdate>();
+
+    // =========================================================
+    // UPDATES
+    // =========================================================
+
+    public ICollection<ComplaintUpdate> Updates { get; set; }
+        = new List<ComplaintUpdate>();
 }

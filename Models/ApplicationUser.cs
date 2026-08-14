@@ -1,23 +1,54 @@
-namespace KnustHallMaintenance.Models;
+using System.Collections.Generic;
 
-public enum UserRole
-{
-    Student,
-    Staff,
-    Maintenance
-}
+namespace KnustHallMaintenance.Models;
 
 public class ApplicationUser
 {
     public int Id { get; set; }
-    public string FullName { get; set; } = string.Empty;
-    public string Email { get; set; } = string.Empty;
-    public string PasswordHash { get; set; } = string.Empty;
+
+
+    // =========================================================
+    // BASIC USER INFORMATION
+    // =========================================================
+
+    public string FullName { get; set; }
+        = string.Empty;
+
+    public string Email { get; set; }
+        = string.Empty;
+
+
+    // =========================================================
+    // AUTHENTICATION
+    // =========================================================
+
+    public string PasswordHash { get; set; }
+        = string.Empty;
+
     public UserRole Role { get; set; }
 
-    // Only relevant for Student accounts
+
+    // =========================================================
+    // LOCATION
+    // =========================================================
+
     public string? Hall { get; set; }
+
     public string? RoomNumber { get; set; }
 
-    public ICollection<Complaint> Complaints { get; set; } = new List<Complaint>();
+
+    // =========================================================
+    // COMPLAINTS ASSIGNED TO THIS USER
+    // =========================================================
+
+    public ICollection<Complaint> AssignedComplaints { get; set; }
+        = new List<Complaint>();
+
+
+    // =========================================================
+    // COMPLAINT UPDATES MADE BY THIS USER
+    // =========================================================
+
+    public ICollection<ComplaintUpdate> ComplaintUpdates { get; set; }
+        = new List<ComplaintUpdate>();
 }
