@@ -41,6 +41,9 @@ namespace KnustHallMaintenance.Migrations
                     b.Property<string>("Hall")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool>("IsActive")
+                        .HasColumnType("bit");
+
                     b.Property<int?>("MaintenanceSpecialization")
                         .HasColumnType("int");
 

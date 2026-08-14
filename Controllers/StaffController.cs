@@ -14,12 +14,12 @@ namespace KnustHallMaintenance.Controllers;
 // Hall Staff and Maintenance personnel share this dashboard.
 //
 // Hall Staff:
-// - See complaints belonging to their hall
+// - View complaints belonging to their hall
 // - Open complaint details
-// - Assign complaints to maintenance personnel from their hall
+// - Assign complaints to maintenance personnel
 //
 // Maintenance:
-// - See only work orders assigned to them
+// - View only work orders assigned to them
 // - Open assigned complaint details
 // - Update work-order status
 //
@@ -71,11 +71,12 @@ public class StaffController : Controller
 
 
         // =====================================================
-        // MAINTENANCE PERSONNEL
+        // MAINTENANCE
         // =====================================================
         //
-        // Maintenance personnel only see work orders assigned
-        // directly to them.
+        // Maintenance personnel only see complaints assigned
+        // to themselves.
+        //
         // =====================================================
 
         if (isMaintenance)
@@ -95,6 +96,7 @@ public class StaffController : Controller
         //
         // Hall Staff only see complaints belonging to their
         // assigned hall.
+        //
         // =====================================================
 
         else
@@ -103,7 +105,9 @@ public class StaffController : Controller
                 User.FindFirstValue("Hall");
 
 
-            if (string.IsNullOrWhiteSpace(hall))
+            if (
+                string.IsNullOrWhiteSpace(hall)
+            )
             {
                 return Forbid();
             }
@@ -177,6 +181,14 @@ public class StaffController : Controller
     // =========================================================
     // COMPLAINT DETAILS
     // =========================================================
+    //
+    // Maintenance:
+    //     Can only view complaints assigned to themselves.
+    //
+    // Hall Staff:
+    //     Can only view complaints belonging to their hall.
+    //
+    // =========================================================
 
     public async Task<IActionResult> Details(
         int id)
@@ -196,10 +208,6 @@ public class StaffController : Controller
         // =====================================================
         // MAINTENANCE ACCESS
         // =====================================================
-        //
-        // Maintenance personnel can only open complaints
-        // assigned to themselves.
-        // =====================================================
 
         if (
             User.IsInRole(
@@ -216,10 +224,6 @@ public class StaffController : Controller
 
         // =====================================================
         // HALL STAFF ACCESS
-        // =====================================================
-        //
-        // Hall Staff can only open complaints belonging to
-        // their own hall.
         // =====================================================
 
         if (
@@ -247,25 +251,30 @@ public class StaffController : Controller
         }
 
 
-        ViewBag.IsMaintenance =
-            User.IsInRole(
-                nameof(UserRole.Maintenance)
-            );
-
-
         // =====================================================
         // MAINTENANCE STAFF
         // =====================================================
         //
         // Used by Hall Staff when assigning a complaint.
         //
-        // The service layer will also verify that the selected
-        // technician belongs to the same hall.
+        // We get all active maintenance personnel here.
+        // The ComplaintService performs the final security
+        // check to ensure the technician belongs to the
+        // complaint's hall.
+        //
         // =====================================================
 
-        ViewBag.MaintenanceStaff =
-            await _userService
-                .GetMaintenanceStaffAsync();
+            ViewBag.MaintenanceStaff =
+        await _userService
+            .GetMaintenanceStaffAsync(
+                complaint.Hall
+            );
+
+
+        ViewBag.IsMaintenance =
+            User.IsInRole(
+                nameof(UserRole.Maintenance)
+            );
 
 
         return View(
@@ -278,16 +287,18 @@ public class StaffController : Controller
     // ASSIGN COMPLAINT
     // =========================================================
     //
-    // Only Hall Staff can assign complaints.
+    // ONLY Hall Staff can assign complaints.
     //
-    // The ComplaintService performs the final security check
-    // to ensure:
+    // The ComplaintService performs the final checks:
     //
-    // Hall Staff hall == Complaint hall
+    // 1. Hall Staff belongs to complaint hall.
     //
-    // and
+    // 2. Selected technician is Maintenance.
     //
-    // Technician hall == Complaint hall
+    // 3. Selected technician belongs to complaint hall.
+    //
+    // 4. Technician is active.
+    //
     // =========================================================
 
     [HttpPost]
@@ -329,7 +340,8 @@ public class StaffController : Controller
     // UPDATE WORK ORDER STATUS
     // =========================================================
     //
-    // Only Maintenance personnel can update status.
+    // ONLY Maintenance personnel can update status.
+    //
     // =========================================================
 
     [HttpPost]
@@ -341,7 +353,8 @@ public class StaffController : Controller
         string? note)
     {
         // A maintenance technician cannot move
-        // a complaint back to Submitted.
+        // something back to Submitted.
+
         if (
             status ==
             ComplaintStatus.Submitted

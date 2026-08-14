@@ -155,18 +155,31 @@ public class AccountController : Controller
         // =====================================================
 
         var user =
-            await _userService.GetByEmailAsync(
-                model.EmailOrStudentId.Trim()
-            );
+    await _userService.GetByEmailAsync(
+        model.EmailOrStudentId.Trim()
+    );
+
+        if (user == null)
+        {
+            model.ErrorMessage =
+                "Invalid email or password.";
+
+            return View(model);
+        }
 
 
-        if (
-            user == null ||
-            !_userService.VerifyPassword(
+        if (!user.IsActive)
+        {
+            model.ErrorMessage =
+                "This account has been deactivated. Please contact the administrator.";
+
+            return View(model);
+        }
+
+
+        if (!_userService.VerifyPassword(
                 user,
-                model.Password
-            )
-        )
+                model.Password))
         {
             model.ErrorMessage =
                 "Invalid email or password.";

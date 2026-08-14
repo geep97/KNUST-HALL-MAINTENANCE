@@ -26,6 +26,8 @@ public class ApplicationUser
 
     public UserRole Role { get; set; }
 
+    public bool IsActive { get; set; } = true;
+
 
     // =========================================================
     // LOCATION

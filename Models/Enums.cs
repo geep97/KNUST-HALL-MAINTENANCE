@@ -19,10 +19,13 @@ public enum MaintenanceSpecialization
 
 public enum ComplaintCategory
 {
-    Electrical,
     Plumbing,
-    Furniture,
+    Electrical,
+    Carpentry,
+    Masonry,
+    Painting,
     Structural,
+    Furniture,
     Other
 }
 

@@ -31,7 +31,9 @@ public class ComplaintService : IComplaintService
         complaint.DateCreated =
             DateTime.Now;
 
-        _context.Complaints.Add(complaint);
+        _context.Complaints.Add(
+            complaint
+        );
 
         await _context.SaveChangesAsync();
 
@@ -47,23 +49,18 @@ public class ComplaintService : IComplaintService
         int studentId)
     {
         return await _context.Complaints
-
-            .Where(c => c.StudentId == studentId)
-
-            .OrderByDescending(c => c.DateCreated)
-
+            .Where(
+                c => c.StudentId == studentId
+            )
+            .OrderByDescending(
+                c => c.DateCreated
+            )
             .ToListAsync();
     }
 
 
     // =========================================================
     // GET ALL COMPLAINTS
-    // =========================================================
-    //
-    // Used by Admin.
-    //
-    // Hall Staff should NOT use this method.
-    // They should use GetForHallAsync().
     // =========================================================
 
     public async Task<List<Complaint>> GetAllAsync(
@@ -82,41 +79,32 @@ public class ComplaintService : IComplaintService
 
         if (statusFilter.HasValue)
         {
-            query = query.Where(
-                c => c.Status == statusFilter.Value
-            );
+            query =
+                query.Where(
+                    c => c.Status == statusFilter.Value
+                );
         }
 
 
         if (categoryFilter.HasValue)
         {
-            query = query.Where(
-                c => c.Category == categoryFilter.Value
-            );
+            query =
+                query.Where(
+                    c => c.Category == categoryFilter.Value
+                );
         }
 
 
         return await query
-
-            .OrderByDescending(c => c.DateCreated)
-
+            .OrderByDescending(
+                c => c.DateCreated
+            )
             .ToListAsync();
     }
 
 
     // =========================================================
     // GET COMPLAINTS FOR A HALL
-    // =========================================================
-    //
-    // Hall Staff use this.
-    //
-    // Example:
-    //
-    // Unity Hall Staff
-    //     -> only Unity Hall complaints
-    //
-    // Independence Hall Staff
-    //     -> only Independence Hall complaints
     // =========================================================
 
     public async Task<List<Complaint>> GetForHallAsync(
@@ -131,40 +119,41 @@ public class ComplaintService : IComplaintService
 
                 .Include(c => c.AssignedTo)
 
-                .Where(c => c.Hall == hall)
+                .Where(
+                    c => c.Hall == hall
+                )
 
                 .AsQueryable();
 
 
         if (statusFilter.HasValue)
         {
-            query = query.Where(
-                c => c.Status == statusFilter.Value
-            );
+            query =
+                query.Where(
+                    c => c.Status == statusFilter.Value
+                );
         }
 
 
         if (categoryFilter.HasValue)
         {
-            query = query.Where(
-                c => c.Category == categoryFilter.Value
-            );
+            query =
+                query.Where(
+                    c => c.Category == categoryFilter.Value
+                );
         }
 
 
         return await query
-
-            .OrderByDescending(c => c.DateCreated)
-
+            .OrderByDescending(
+                c => c.DateCreated
+            )
             .ToListAsync();
     }
 
 
     // =========================================================
     // GET MAINTENANCE WORK ORDERS
-    // =========================================================
-    //
-    // Maintenance personnel only see work assigned to them.
     // =========================================================
 
     public async Task<List<Complaint>> GetAssignedToAsync(
@@ -188,24 +177,26 @@ public class ComplaintService : IComplaintService
 
         if (statusFilter.HasValue)
         {
-            query = query.Where(
-                c => c.Status == statusFilter.Value
-            );
+            query =
+                query.Where(
+                    c => c.Status == statusFilter.Value
+                );
         }
 
 
         if (categoryFilter.HasValue)
         {
-            query = query.Where(
-                c => c.Category == categoryFilter.Value
-            );
+            query =
+                query.Where(
+                    c => c.Category == categoryFilter.Value
+                );
         }
 
 
         return await query
-
-            .OrderByDescending(c => c.DateCreated)
-
+            .OrderByDescending(
+                c => c.DateCreated
+            )
             .ToListAsync();
     }
 
@@ -224,7 +215,9 @@ public class ComplaintService : IComplaintService
             .Include(c => c.AssignedTo)
 
             .Include(c => c.Updates)
-                .ThenInclude(u => u.UpdatedBy)
+                .ThenInclude(
+                    u => u.UpdatedBy
+                )
 
             .FirstOrDefaultAsync(
                 c => c.Id == id
@@ -236,18 +229,27 @@ public class ComplaintService : IComplaintService
     // ASSIGN COMPLAINT
     // =========================================================
     //
-    // Hall Staff can only assign a complaint to a
-    // Maintenance person belonging to the SAME hall.
+    // Hall Staff can only assign a complaint to a Maintenance
+    // person belonging to the SAME hall.
     //
-    // Example:
+    // IMPORTANT:
     //
-    // Independence Hall complaint
-    //       ↓
-    // Independence Hall Staff
-    //       ↓
-    // Independence Hall Technician
+    // If the complaint is Submitted:
     //
-    // Cross-hall assignment is rejected.
+    //     Submitted
+    //          ↓
+    //     Assigned
+    //
+    // If the complaint is already InProgress:
+    //
+    //     InProgress
+    //          ↓
+    //     reassigned
+    //          ↓
+    //     InProgress
+    //
+    // We preserve progress when a new technician takes over.
+    //
     // =========================================================
 
     public async Task<bool> AssignAsync(
@@ -285,6 +287,7 @@ public class ComplaintService : IComplaintService
 
 
         // Must actually be Hall Staff.
+
         if (staff.Role != UserRole.HallStaff)
         {
             return false;
@@ -292,7 +295,12 @@ public class ComplaintService : IComplaintService
 
 
         // Hall Staff must have a hall.
-        if (string.IsNullOrWhiteSpace(staff.Hall))
+
+        if (
+            string.IsNullOrWhiteSpace(
+                staff.Hall
+            )
+        )
         {
             return false;
         }
@@ -331,6 +339,7 @@ public class ComplaintService : IComplaintService
 
 
         // Must be Maintenance personnel.
+
         if (
             assignee.Role != UserRole.Maintenance
         )
@@ -340,6 +349,7 @@ public class ComplaintService : IComplaintService
 
 
         // Technician must have a hall.
+
         if (
             string.IsNullOrWhiteSpace(
                 assignee.Hall
@@ -373,21 +383,53 @@ public class ComplaintService : IComplaintService
         complaint.AssignedToId =
             assignToId;
 
-        complaint.Status =
-            ComplaintStatus.Assigned;
 
+        // =====================================================
+        // PRESERVE EXISTING PROGRESS
+        // =====================================================
+        //
+        // Only Submitted complaints become Assigned.
+        //
+        // If the complaint is already:
+        //
+        //     InProgress
+        //
+        // it stays:
+        //
+        //     InProgress
+        //
+        // This is important after a technician is transferred
+        // between halls.
+        // =====================================================
+
+        if (
+            complaint.Status ==
+            ComplaintStatus.Submitted
+        )
+        {
+            complaint.Status =
+                ComplaintStatus.Assigned;
+        }
+
+
+        // =====================================================
+        // ADD AUDIT UPDATE
+        // =====================================================
 
         _context.ComplaintUpdates.Add(
             new ComplaintUpdate
             {
-                ComplaintId = complaintId,
+                ComplaintId =
+                    complaintId,
 
-                UpdatedById = staffId,
+                UpdatedById =
+                    staffId,
 
                 Note =
                     $"Assigned to {assignee.FullName}.",
 
-                Timestamp = DateTime.Now
+                Timestamp =
+                    DateTime.Now
             }
         );
 
@@ -427,7 +469,8 @@ public class ComplaintService : IComplaintService
 
 
         if (
-            status == ComplaintStatus.Resolved
+            status ==
+            ComplaintStatus.Resolved
         )
         {
             complaint.DateResolved =
@@ -443,16 +486,19 @@ public class ComplaintService : IComplaintService
         _context.ComplaintUpdates.Add(
             new ComplaintUpdate
             {
-                ComplaintId = complaintId,
+                ComplaintId =
+                    complaintId,
 
-                UpdatedById = updatedById,
+                UpdatedById =
+                    updatedById,
 
                 Note =
                     string.IsNullOrWhiteSpace(note)
                         ? $"Status changed to {status}."
                         : note,
 
-                Timestamp = DateTime.Now
+                Timestamp =
+                    DateTime.Now
             }
         );
 

@@ -1,4 +1,4 @@
-using KnustHallMaintenance.Data;
+﻿using KnustHallMaintenance.Data;
 using KnustHallMaintenance.Models;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -27,7 +27,9 @@ public class UserService : IUserService
         string email)
     {
         return await _context.Users
-            .FirstOrDefaultAsync(u => u.Email == email);
+            .FirstOrDefaultAsync(
+                u => u.Email == email
+            );
     }
 
 
@@ -51,28 +53,37 @@ public class UserService : IUserService
     {
         return await _context.Users
             .OrderBy(u => u.Role)
+            .ThenBy(u => u.Hall)
             .ThenBy(u => u.FullName)
             .ToListAsync();
     }
 
 
     // ============================================================
-    // GET MAINTENANCE PERSONNEL
+    // GET ACTIVE MAINTENANCE PERSONNEL
     // ============================================================
 
-    public async Task<List<ApplicationUser>> GetMaintenanceStaffAsync()
+    public async Task<List<ApplicationUser>> GetMaintenanceStaffAsync(
+    string hall)
     {
+        if (string.IsNullOrWhiteSpace(hall))
+        {
+            return new List<ApplicationUser>();
+        }
+
         return await _context.Users
-            .Where(u => u.Role == UserRole.Maintenance)
-            .OrderBy(u => u.Hall)
-            .ThenBy(u => u.MaintenanceSpecialization)
+            .Where(u =>
+                u.Role == UserRole.Maintenance &&
+                u.IsActive &&
+                u.Hall == hall)
+            .OrderBy(u => u.MaintenanceSpecialization)
             .ThenBy(u => u.FullName)
             .ToListAsync();
     }
 
 
     // ============================================================
-    // CREATE PORTAL USER
+    // CREATE USER
     // ============================================================
 
     public async Task<ApplicationUser> CreateAsync(
@@ -88,9 +99,6 @@ public class UserService : IUserService
             FullName = fullName,
             Email = email,
             Role = role,
-
-            // Hall Staff and Maintenance
-            // have an assigned hall.
             Hall = hall,
 
             // Only Maintenance users should have
@@ -98,7 +106,9 @@ public class UserService : IUserService
             MaintenanceSpecialization =
                 role == UserRole.Maintenance
                     ? maintenanceSpecialization
-                    : null
+                    : null,
+
+            IsActive = true
         };
 
 
@@ -122,6 +132,264 @@ public class UserService : IUserService
         await _context.SaveChangesAsync();
 
         return user;
+    }
+
+
+    // ============================================================
+    // UPDATE USER
+    // ============================================================
+    //
+    // IMPORTANT:
+    //
+    // If a Maintenance worker is moved to another hall:
+    //
+    //     Old Hall
+    //         ↓
+    //     Admin changes Hall
+    //         ↓
+    //     Existing active assignments are removed
+    //         ↓
+    //     Complaint status is PRESERVED
+    //         ↓
+    //     New Hall Staff can reassign the complaint
+    //
+    // Example:
+    //
+    //     Technician A
+    //     Unity Hall
+    //
+    //     Complaint
+    //     Status = InProgress
+    //     AssignedTo = Technician A
+    //
+    //     Technician A moved to Independence Hall
+    //
+    //     Complaint
+    //     Status = InProgress
+    //     AssignedTo = NULL
+    //
+    // ============================================================
+
+    public async Task<bool> UpdateAsync(
+        int id,
+        string fullName,
+        string email,
+        UserRole role,
+        string? hall,
+        MaintenanceSpecialization? maintenanceSpecialization,
+        bool isActive)
+    {
+        var user =
+            await _context.Users
+                .FindAsync(id);
+
+        if (user == null)
+        {
+            return false;
+        }
+
+
+        // ========================================================
+        // DETECT WHETHER THE HALL IS CHANGING
+        // ========================================================
+
+        var hallChanged =
+            !string.Equals(
+                user.Hall,
+                hall,
+                StringComparison.OrdinalIgnoreCase
+            );
+
+
+        // ========================================================
+        // MAINTENANCE WORKER HALL TRANSFER
+        // ========================================================
+        //
+        // If a maintenance worker moves halls, remove them from
+        // all unresolved complaints they are currently assigned to.
+        //
+        // We DO NOT change the complaint status.
+        //
+        // Assigned   -> Assigned
+        // InProgress -> InProgress
+        //
+        // This means the work itself is not forgotten.
+        // Only the responsible technician is removed.
+        //
+        // ========================================================
+
+        if (
+            hallChanged &&
+            user.Role == UserRole.Maintenance
+        )
+        {
+            var assignedComplaints =
+                await _context.Complaints
+                    .Where(c =>
+                        c.AssignedToId == user.Id &&
+                        c.Status != ComplaintStatus.Resolved)
+                    .ToListAsync();
+
+
+            foreach (var complaint in assignedComplaints)
+            {
+                // Remove the old technician.
+
+                complaint.AssignedToId = null;
+
+                // IMPORTANT:
+                //
+                // Do NOT do this:
+                //
+                // complaint.Status =
+                //     ComplaintStatus.Submitted;
+                //
+                // We want the current progress to remain intact.
+            }
+        }
+
+
+        // ========================================================
+        // UPDATE USER INFORMATION
+        // ========================================================
+
+        user.FullName =
+            fullName;
+
+        user.Email =
+            email;
+
+        user.Role =
+            role;
+
+        user.Hall =
+            hall;
+
+
+        // ========================================================
+        // UPDATE SPECIALIZATION
+        // ========================================================
+        //
+        // Only Maintenance users should have a specialization.
+        //
+        // ========================================================
+
+        user.MaintenanceSpecialization =
+            role == UserRole.Maintenance
+                ? maintenanceSpecialization
+                : null;
+
+
+        // ========================================================
+        // UPDATE ACTIVE STATUS
+        // ========================================================
+
+        user.IsActive =
+            isActive;
+
+
+        // ========================================================
+        // SAVE EVERYTHING
+        // ========================================================
+
+        await _context.SaveChangesAsync();
+
+        return true;
+    }
+
+
+    // ============================================================
+    // ACTIVATE / DEACTIVATE
+    // ============================================================
+
+    public async Task<bool> SetActiveAsync(
+        int id,
+        bool isActive)
+    {
+        var user =
+            await _context.Users
+                .FindAsync(id);
+
+        if (user == null)
+        {
+            return false;
+        }
+
+
+        user.IsActive =
+            isActive;
+
+
+        await _context.SaveChangesAsync();
+
+        return true;
+    }
+
+
+    // ============================================================
+    // DELETE USER
+    // ============================================================
+
+    public async Task<bool> DeleteAsync(
+        int id)
+    {
+        var user =
+            await _context.Users
+                .FindAsync(id);
+
+        if (user == null)
+        {
+            return false;
+        }
+
+
+        // --------------------------------------------------------
+        // Never delete an administrator.
+        // --------------------------------------------------------
+
+        if (user.Role == UserRole.Admin)
+        {
+            return false;
+        }
+
+
+        // --------------------------------------------------------
+        // Do not delete users who have complaint assignments.
+        // --------------------------------------------------------
+
+        var hasAssignedComplaints =
+            await _context.Complaints
+                .AnyAsync(
+                    c => c.AssignedToId == id
+                );
+
+        if (hasAssignedComplaints)
+        {
+            return false;
+        }
+
+
+        // --------------------------------------------------------
+        // Do not delete users who have audit history.
+        // --------------------------------------------------------
+
+        var hasComplaintUpdates =
+            await _context.ComplaintUpdates
+                .AnyAsync(
+                    u => u.UpdatedById == id
+                );
+
+        if (hasComplaintUpdates)
+        {
+            return false;
+        }
+
+
+        _context.Users.Remove(user);
+
+        await _context.SaveChangesAsync();
+
+        return true;
     }
 
 

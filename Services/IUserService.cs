@@ -26,7 +26,7 @@ public interface IUserService
     // MAINTENANCE PERSONNEL
     // ============================================================
 
-    Task<List<ApplicationUser>> GetMaintenanceStaffAsync();
+    Task<List<ApplicationUser>> GetMaintenanceStaffAsync(string hall);
 
 
     // ============================================================
@@ -40,6 +40,37 @@ public interface IUserService
         UserRole role,
         string? hall,
         MaintenanceSpecialization? maintenanceSpecialization);
+
+
+    // ============================================================
+    // UPDATE USER
+    // ============================================================
+
+    Task<bool> UpdateAsync(
+        int id,
+        string fullName,
+        string email,
+        UserRole role,
+        string? hall,
+        MaintenanceSpecialization? maintenanceSpecialization,
+        bool isActive);
+
+
+    // ============================================================
+    // ACTIVATE / DEACTIVATE
+    // ============================================================
+
+    Task<bool> SetActiveAsync(
+        int id,
+        bool isActive);
+
+
+    // ============================================================
+    // DELETE USER
+    // ============================================================
+
+    Task<bool> DeleteAsync(
+        int id);
 
 
     // ============================================================
