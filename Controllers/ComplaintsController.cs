@@ -33,10 +33,22 @@ public class ComplaintsController : Controller
     }
 
 
+    // =========================================================
+    // CURRENT STUDENT
+    // =========================================================
+
     private int CurrentUserId =>
         int.Parse(
             User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
+
+
+    private string CurrentStudentHall =>
+        User.FindFirstValue("Hall") ?? string.Empty;
+
+
+    private string CurrentStudentRoom =>
+        User.FindFirstValue("RoomNumber") ?? string.Empty;
 
 
     // =========================================================
@@ -59,7 +71,13 @@ public class ComplaintsController : Controller
     [HttpGet]
     public IActionResult Create()
     {
-        return View(new ComplaintCreateViewModel());
+        var model = new ComplaintCreateViewModel
+        {
+            Hall = CurrentStudentHall,
+            RoomNumber = CurrentStudentRoom
+        };
+
+        return View(model);
     }
 
 
@@ -80,10 +98,26 @@ public class ComplaintsController : Controller
         try
         {
             // -------------------------------------------------
+            // GET HALL AND ROOM FROM AUTHENTICATED STUDENT
+            // -------------------------------------------------
+
+            var hall = CurrentStudentHall;
+            var roomNumber = CurrentStudentRoom;
+
+
+            // -------------------------------------------------
             // IMPORTANT:
-            // We are reading the uploaded file directly from
-            // Request.Form instead of relying on IFormFile
-            // model binding.
+            // Never trust Hall or RoomNumber submitted by the
+            // browser. The student's account is the source
+            // of truth.
+            // -------------------------------------------------
+
+            model.Hall = hall;
+            model.RoomNumber = roomNumber;
+
+
+            // -------------------------------------------------
+            // READ PHOTO
             // -------------------------------------------------
 
             IFormFile? uploadedPhoto = null;
@@ -102,7 +136,7 @@ public class ComplaintsController : Controller
 
 
             // -------------------------------------------------
-            // Validate normal form
+            // VALIDATE
             // -------------------------------------------------
 
             if (!ModelState.IsValid)
@@ -120,8 +154,10 @@ public class ComplaintsController : Controller
             string? photoPath = null;
 
 
-            if (uploadedPhoto != null &&
-                uploadedPhoto.Length > 0)
+            if (
+                uploadedPhoto != null &&
+                uploadedPhoto.Length > 0
+            )
             {
                 Console.WriteLine(
                     $"Photo received: {uploadedPhoto.FileName}"
@@ -250,11 +286,6 @@ public class ComplaintsController : Controller
             // CREATE COMPLAINT
             // -------------------------------------------------
 
-            Console.WriteLine(
-                "Creating complaint..."
-            );
-
-
             var complaint = new Complaint
             {
                 StudentId = CurrentUserId,
@@ -263,9 +294,12 @@ public class ComplaintsController : Controller
 
                 Description = model.Description,
 
-                Hall = model.Hall,
+                // IMPORTANT:
+                // These come from the authenticated student,
+                // NOT from the submitted form.
+                Hall = hall,
 
-                RoomNumber = model.RoomNumber,
+                RoomNumber = roomNumber,
 
                 PhotoPath = photoPath
             };
@@ -308,6 +342,12 @@ public class ComplaintsController : Controller
                 "",
                 "There was a problem submitting the request."
             );
+
+
+            // Make sure the values are still available
+            // if the form needs to be displayed again.
+            model.Hall = CurrentStudentHall;
+            model.RoomNumber = CurrentStudentRoom;
 
 
             return View(model);

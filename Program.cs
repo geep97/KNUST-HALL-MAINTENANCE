@@ -48,14 +48,35 @@ builder.Services.AddDbContext<ApplicationDbContext>(options =>
 
 
 // =========================================================
-// SERVICES
+// PASSWORD HASHERS
 // =========================================================
 
-builder.Services.AddScoped<IPasswordHasher<ApplicationUser>, PasswordHasher<ApplicationUser>>();
+// Password hasher for:
+// - Admin
+// - Hall Staff
+// - Maintenance Personnel
+builder.Services.AddScoped<
+    IPasswordHasher<ApplicationUser>,
+    PasswordHasher<ApplicationUser>
+>();
+
+
+// Password hasher for Students.
+builder.Services.AddScoped<
+    IPasswordHasher<Student>,
+    PasswordHasher<Student>
+>();
+
+
+// =========================================================
+// APPLICATION SERVICES
+// =========================================================
 
 builder.Services.AddScoped<IComplaintService, ComplaintService>();
 
 builder.Services.AddScoped<IUserService, UserService>();
+
+builder.Services.AddScoped<IStudentService, StudentService>();
 
 
 // =========================================================
@@ -134,13 +155,46 @@ using (var scope = app.Services.CreateScope())
         scope.ServiceProvider
             .GetRequiredService<ApplicationDbContext>();
 
-    var hasher =
+
+    // ---------------------------------------------------------
+    // Application User Password Hasher
+    // ---------------------------------------------------------
+
+    var userHasher =
         scope.ServiceProvider
-            .GetRequiredService<IPasswordHasher<ApplicationUser>>();
+            .GetRequiredService<
+                IPasswordHasher<ApplicationUser>
+            >();
+
+
+    // ---------------------------------------------------------
+    // Student Password Hasher
+    // ---------------------------------------------------------
+
+    var studentHasher =
+        scope.ServiceProvider
+            .GetRequiredService<
+                IPasswordHasher<Student>
+            >();
+
+
+    // ---------------------------------------------------------
+    // Seed Admin / Hall Staff / Maintenance
+    // ---------------------------------------------------------
 
     DbInitializer.Seed(
         db,
-        hasher
+        userHasher
+    );
+
+
+    // ---------------------------------------------------------
+    // Seed 100 Synthetic Students
+    // ---------------------------------------------------------
+
+    StudentSeeder.Seed(
+        db,
+        studentHasher
     );
 }
 

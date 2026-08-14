@@ -19,6 +19,13 @@ public class Student
     public string Email { get; set; } = string.Empty;
 
     [Required]
+    public string PasswordHash { get; set; } = string.Empty;
+
+    [Required]
+    [MaxLength(20)]
+    public string TelephoneNumber { get; set; } = string.Empty;
+
+    [Required]
     [MaxLength(150)]
     public string Programme { get; set; } = string.Empty;
 

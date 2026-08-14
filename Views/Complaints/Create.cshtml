@@ -48,7 +48,9 @@
                 </div>
 
 
-                <!-- CATEGORY -->
+                <!-- =================================================
+                     CATEGORY
+                     ================================================= -->
 
                 <div class="mb-3">
 
@@ -74,49 +76,57 @@
                 </div>
 
 
-                <!-- HALL + ROOM -->
+                <!-- =================================================
+                     STUDENT LOCATION
+                     ================================================= -->
 
                 <div class="row">
 
+                    <!-- HALL -->
+
                     <div class="col-md-6 mb-3">
 
-                        <label asp-for="Hall"
-                               class="form-label">
+                        <label class="form-label">
                             Hall
                         </label>
 
-                        <input asp-for="Hall"
+                        <input type="text"
                                class="form-control"
-                               placeholder="e.g. Unity Hall" />
+                               value="@Model.Hall"
+                               readonly />
 
-                        <span asp-validation-for="Hall"
-                              class="text-danger small">
-                        </span>
+                        <div class="form-text">
+                            Your assigned hall
+                        </div>
 
                     </div>
 
 
+                    <!-- ROOM NUMBER -->
+
                     <div class="col-md-6 mb-3">
 
-                        <label asp-for="RoomNumber"
-                               class="form-label">
+                        <label class="form-label">
                             Room number
                         </label>
 
-                        <input asp-for="RoomNumber"
+                        <input type="text"
                                class="form-control"
-                               placeholder="e.g. B12" />
+                               value="@Model.RoomNumber"
+                               readonly />
 
-                        <span asp-validation-for="RoomNumber"
-                              class="text-danger small">
-                        </span>
+                        <div class="form-text">
+                            Your assigned room
+                        </div>
 
                     </div>
 
                 </div>
 
 
-                <!-- DESCRIPTION -->
+                <!-- =================================================
+                     DESCRIPTION
+                     ================================================= -->
 
                 <div class="mb-3">
 

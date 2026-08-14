@@ -1,7 +1,7 @@
-﻿@model AdminCreateUserViewModel
+﻿@model KnustHallMaintenance.Models.ViewModels.AdminCreateUserViewModel
 
 @{
-    ViewData["Title"] = "Add User";
+    ViewData["Title"] = "Create User";
 }
 
 <div class="page-header">
@@ -11,19 +11,20 @@
     </div>
 
     <h2>
-        Add Portal User
+        Create User
     </h2>
 
     <p>
-        Create an account for a student, hall staff member or maintenance personnel.
+        Create an account for hall staff, maintenance personnel or an administrator.
     </p>
 
 </div>
 
+
 <div class="row g-4">
 
     <!-- =====================================================
-         CREATE USER FORM
+         MAIN FORM
          ===================================================== -->
 
     <div class="col-lg-8">
@@ -34,25 +35,23 @@
                 Account information
             </div>
 
+
             <form asp-controller="Admin"
                   asp-action="CreateUser"
                   method="post">
 
                 @Html.AntiForgeryToken()
 
-                <!-- GENERAL VALIDATION -->
 
-                <div asp-validation-summary="ModelOnly"
-                     class="text-danger small mb-3">
-                </div>
-
-
-                <!-- FULL NAME -->
+                <!-- =================================================
+                     FULL NAME
+                     ================================================= -->
 
                 <div class="mb-3">
 
                     <label asp-for="FullName"
                            class="form-label">
+                        Full name
                     </label>
 
                     <input asp-for="FullName"
@@ -66,16 +65,18 @@
                 </div>
 
 
-                <!-- EMAIL -->
+                <!-- =================================================
+                     EMAIL
+                     ================================================= -->
 
                 <div class="mb-3">
 
                     <label asp-for="Email"
                            class="form-label">
+                        Email
                     </label>
 
                     <input asp-for="Email"
-                           type="email"
                            class="form-control"
                            placeholder="e.g. john@knust.edu.gh" />
 
@@ -86,16 +87,18 @@
                 </div>
 
 
-                <!-- PASSWORD -->
+                <!-- =================================================
+                     PASSWORD
+                     ================================================= -->
 
                 <div class="mb-3">
 
                     <label asp-for="Password"
                            class="form-label">
+                        Password
                     </label>
 
                     <input asp-for="Password"
-                           type="password"
                            class="form-control"
                            placeholder="Enter temporary password" />
 
@@ -104,23 +107,46 @@
                     </span>
 
                     <div class="form-text">
-                        The password will be securely hashed before it is stored.
+
+                        The password will be securely hashed
+                        before it is stored.
+
                     </div>
 
                 </div>
 
 
-                <!-- ROLE -->
+                <!-- =================================================
+                     ROLE
+                     ================================================= -->
 
                 <div class="mb-3">
 
                     <label asp-for="Role"
                            class="form-label">
+                        Role
                     </label>
 
                     <select asp-for="Role"
-                            asp-items="Html.GetEnumSelectList<UserRole>()"
-                            class="form-select">
+                            class="form-select"
+                            id="roleSelect">
+
+                        <option value="">
+                            Select a role
+                        </option>
+
+                        <option value="@UserRole.HallStaff">
+                            Hall Staff
+                        </option>
+
+                        <option value="@UserRole.Maintenance">
+                            Maintenance
+                        </option>
+
+                        <option value="@UserRole.Admin">
+                            Administrator
+                        </option>
+
                     </select>
 
                     <span asp-validation-for="Role"
@@ -130,49 +156,50 @@
                 </div>
 
 
-                <!-- HALL + ROOM -->
+                <!-- =================================================
+                     HALL
+                     ================================================= -->
 
-                <div class="row">
+                <div class="mb-4"
+                     id="hallField">
 
-                    <div class="col-md-6 mb-3">
+                    <label asp-for="Hall"
+                           class="form-label">
+                        Hall
+                    </label>
 
-                        <label asp-for="Hall"
-                               class="form-label">
-                        </label>
+                    <select asp-for="Hall"
+                            class="form-select">
 
-                        <input asp-for="Hall"
-                               class="form-control"
-                               placeholder="e.g. Unity Hall" />
+                        <option value="">
+                            Select hall
+                        </option>
 
-                        <span asp-validation-for="Hall"
-                              class="text-danger small">
-                        </span>
+                        @foreach (var hall in (List<string>)ViewBag.Halls)
+                        {
+                            <option value="@hall">
+                                @hall
+                            </option>
+                        }
 
-                    </div>
+                    </select>
 
+                    <span asp-validation-for="Hall"
+                          class="text-danger small">
+                    </span>
 
-                    <div class="col-md-6 mb-3">
-
-                        <label asp-for="RoomNumber"
-                               class="form-label">
-                        </label>
-
-                        <input asp-for="RoomNumber"
-                               class="form-control"
-                               placeholder="e.g. B12" />
-
-                        <span asp-validation-for="RoomNumber"
-                              class="text-danger small">
-                        </span>
-
+                    <div class="form-text">
+                        Select the hall this staff member is responsible for.
                     </div>
 
                 </div>
 
 
-                <!-- ACTIONS -->
+                <!-- =================================================
+                     BUTTONS
+                     ================================================= -->
 
-                <div class="d-flex gap-2 flex-wrap mt-2">
+                <div class="d-flex gap-2 flex-wrap">
 
                     <button type="submit"
                             class="btn btn-knust">
@@ -208,30 +235,44 @@
         <div class="card-soft p-4">
 
             <div class="section-title mb-3">
-                Account roles
+                Portal roles
             </div>
 
 
             <div class="small text-muted">
 
                 <p>
-                    <strong>Student</strong>
+
+                    <strong>Hall Staff</strong>
+
                     <br />
-                    Can report maintenance issues and track their requests.
+
+                    Can review maintenance requests and assign
+                    work to maintenance personnel in their hall.
+
                 </p>
 
 
                 <p>
-                    <strong>Staff</strong>
+
+                    <strong>Maintenance</strong>
+
                     <br />
-                    Can review maintenance requests and assign work to technicians.
+
+                    Can view assigned work orders and update
+                    their progress.
+
                 </p>
 
 
-                <p class="mb-0">
-                    <strong>Maintenance</strong>
+                <p>
+
+                    <strong>Administrator</strong>
+
                     <br />
-                    Can view assigned work orders and update their progress.
+
+                    Can manage portal users and system administration.
+
                 </p>
 
             </div>
@@ -241,18 +282,23 @@
 
         <div class="card-soft p-4 mt-4">
 
-            <div class="section-title mb-2">
+            <div class="section-title mb-3">
                 Account security
             </div>
 
-            <p class="small text-muted mb-0">
-                User passwords are hashed before being stored in the database.
-                Administrators do not have access to a user's actual password
-                after the account has been created.
-            </p>
+            <div class="small text-muted">
+
+                User passwords are hashed before being stored
+                in the database.
+
+                Administrators do not have access to a user's
+                actual password after the account has been created.
+
+            </div>
 
         </div>
 
     </div>
 
 </div>
+
