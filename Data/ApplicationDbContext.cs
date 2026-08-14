@@ -11,6 +11,8 @@ public class ApplicationDbContext : DbContext
     public DbSet<Complaint> Complaints => Set<Complaint>();
     public DbSet<ComplaintUpdate> ComplaintUpdates => Set<ComplaintUpdate>();
 
+    public DbSet<Student> Students { get; set; }
+
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<ApplicationUser>()

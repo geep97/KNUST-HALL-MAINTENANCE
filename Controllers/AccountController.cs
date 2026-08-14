@@ -17,6 +17,9 @@ public class AccountController : Controller
         _userService = userService;
     }
 
+
+    //login-get
+
     [HttpGet]
     public IActionResult Login()
     {
@@ -26,47 +29,163 @@ public class AccountController : Controller
         return View(new LoginViewModel());
     }
 
+
+    //login-post
+
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Login(LoginViewModel model)
     {
-        if (!ModelState.IsValid) return View(model);
+        if (!ModelState.IsValid)
+            return View(model);
 
-        var user = await _userService.GetByEmailAsync(model.Email);
 
-        if (user == null || !_userService.VerifyPassword(user, model.Password))
+        var user =
+            await _userService.GetByEmailAsync(model.Email);
+
+
+        if (
+            user == null ||
+            !_userService.VerifyPassword(
+                user,
+                model.Password
+            )
+        )
         {
-            model.ErrorMessage = "Invalid email or password.";
+            model.ErrorMessage =
+                "Invalid email or password.";
+
             return View(model);
         }
 
+
         var claims = new List<Claim>
         {
-            new(ClaimTypes.NameIdentifier, user.Id.ToString()),
-            new(ClaimTypes.Name, user.FullName),
-            new(ClaimTypes.Email, user.Email),
-            new(ClaimTypes.Role, user.Role.ToString())
+            new(
+                ClaimTypes.NameIdentifier,
+                user.Id.ToString()
+            ),
+
+            new(
+                ClaimTypes.Name,
+                user.FullName
+            ),
+
+            new(
+                ClaimTypes.Email,
+                user.Email
+            ),
+
+            new(
+                ClaimTypes.Role,
+                user.Role.ToString()
+            )
         };
 
-        var identity = new ClaimsIdentity(claims, CookieAuthenticationDefaults.AuthenticationScheme);
-        await HttpContext.SignInAsync(CookieAuthenticationDefaults.AuthenticationScheme, new ClaimsPrincipal(identity));
+
+        var identity = new ClaimsIdentity(
+            claims,
+            CookieAuthenticationDefaults.AuthenticationScheme
+        );
+
+
+        var principal =
+            new ClaimsPrincipal(identity);
+
+
+        await HttpContext.SignInAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme,
+            principal
+        );
+
 
         return RedirectAfterLogin(user.Role);
     }
+
+
+    //logout
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
-        await HttpContext.SignOutAsync(CookieAuthenticationDefaults.AuthenticationScheme);
-        return RedirectToAction("Login");
+        await HttpContext.SignOutAsync(
+            CookieAuthenticationDefaults.AuthenticationScheme
+        );
+
+        return RedirectToAction(nameof(Login));
     }
 
-    private IActionResult RedirectAfterLogin(UserRole? role = null)
+    //rbac
+    private IActionResult RedirectAfterLogin(
+        UserRole? role = null
+    )
     {
-        var roleClaim = role?.ToString() ?? User.FindFirstValue(ClaimTypes.Role);
-        return roleClaim == UserRole.Student.ToString()
-            ? RedirectToAction("MyComplaints", "Complaints")
-            : RedirectToAction("Index", "Staff");
+        var roleClaim =
+            role?.ToString()
+            ?? User.FindFirstValue(ClaimTypes.Role);
+
+
+        //student
+
+        if (
+            roleClaim ==
+            UserRole.Student.ToString()
+        )
+        {
+            return RedirectToAction(
+                "MyComplaints",
+                "Complaints"
+            );
+        }
+
+
+        //staff
+
+        if (
+            roleClaim ==
+            UserRole.Staff.ToString()
+        )
+        {
+            return RedirectToAction(
+                "Index",
+                "Staff"
+            );
+        }
+
+
+        //maintainance
+
+        if (
+            roleClaim ==
+            UserRole.Maintenance.ToString()
+        )
+        {
+            return RedirectToAction(
+                "Index",
+                "Staff"
+            );
+        }
+
+
+        //admin
+
+        if (
+            roleClaim ==
+            UserRole.Admin.ToString()
+        )
+        {
+            return RedirectToAction(
+                "Index",
+                "Admin"
+            );
+        }
+
+
+        
+        return RedirectToAction(
+            "Login",
+            "Account"
+        );
     }
 }

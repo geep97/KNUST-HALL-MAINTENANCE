@@ -6,11 +6,19 @@ public interface IUserService
 {
     Task<ApplicationUser?> GetByEmailAsync(string email);
     Task<ApplicationUser?> GetByIdAsync(int id);
+
+    Task<List<ApplicationUser>> GetAllAsync();
+
     Task<List<ApplicationUser>> GetMaintenanceStaffAsync();
 
-    /// <summary>
-    /// Verifies a plaintext password against the user's stored hash.
-    /// Returns true if it matches.
-    /// </summary>
+
+
+    Task<ApplicationUser> CreateAsync(
+    string fullName,
+    string email,
+    string password,
+    UserRole role,
+    string? hall,
+    string? roomNumber);
     bool VerifyPassword(ApplicationUser user, string password);
 }

@@ -1,0 +1,258 @@
+﻿@model AdminCreateUserViewModel
+
+@{
+    ViewData["Title"] = "Add User";
+}
+
+<div class="page-header">
+
+    <div class="eyebrow">
+        Administration
+    </div>
+
+    <h2>
+        Add Portal User
+    </h2>
+
+    <p>
+        Create an account for a student, hall staff member or maintenance personnel.
+    </p>
+
+</div>
+
+<div class="row g-4">
+
+    <!-- =====================================================
+         CREATE USER FORM
+         ===================================================== -->
+
+    <div class="col-lg-8">
+
+        <div class="card-soft p-4">
+
+            <div class="section-title mb-4">
+                Account information
+            </div>
+
+            <form asp-controller="Admin"
+                  asp-action="CreateUser"
+                  method="post">
+
+                @Html.AntiForgeryToken()
+
+                <!-- GENERAL VALIDATION -->
+
+                <div asp-validation-summary="ModelOnly"
+                     class="text-danger small mb-3">
+                </div>
+
+
+                <!-- FULL NAME -->
+
+                <div class="mb-3">
+
+                    <label asp-for="FullName"
+                           class="form-label">
+                    </label>
+
+                    <input asp-for="FullName"
+                           class="form-control"
+                           placeholder="e.g. John Boateng" />
+
+                    <span asp-validation-for="FullName"
+                          class="text-danger small">
+                    </span>
+
+                </div>
+
+
+                <!-- EMAIL -->
+
+                <div class="mb-3">
+
+                    <label asp-for="Email"
+                           class="form-label">
+                    </label>
+
+                    <input asp-for="Email"
+                           type="email"
+                           class="form-control"
+                           placeholder="e.g. john@knust.edu.gh" />
+
+                    <span asp-validation-for="Email"
+                          class="text-danger small">
+                    </span>
+
+                </div>
+
+
+                <!-- PASSWORD -->
+
+                <div class="mb-3">
+
+                    <label asp-for="Password"
+                           class="form-label">
+                    </label>
+
+                    <input asp-for="Password"
+                           type="password"
+                           class="form-control"
+                           placeholder="Enter temporary password" />
+
+                    <span asp-validation-for="Password"
+                          class="text-danger small">
+                    </span>
+
+                    <div class="form-text">
+                        The password will be securely hashed before it is stored.
+                    </div>
+
+                </div>
+
+
+                <!-- ROLE -->
+
+                <div class="mb-3">
+
+                    <label asp-for="Role"
+                           class="form-label">
+                    </label>
+
+                    <select asp-for="Role"
+                            asp-items="Html.GetEnumSelectList<UserRole>()"
+                            class="form-select">
+                    </select>
+
+                    <span asp-validation-for="Role"
+                          class="text-danger small">
+                    </span>
+
+                </div>
+
+
+                <!-- HALL + ROOM -->
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+
+                        <label asp-for="Hall"
+                               class="form-label">
+                        </label>
+
+                        <input asp-for="Hall"
+                               class="form-control"
+                               placeholder="e.g. Unity Hall" />
+
+                        <span asp-validation-for="Hall"
+                              class="text-danger small">
+                        </span>
+
+                    </div>
+
+
+                    <div class="col-md-6 mb-3">
+
+                        <label asp-for="RoomNumber"
+                               class="form-label">
+                        </label>
+
+                        <input asp-for="RoomNumber"
+                               class="form-control"
+                               placeholder="e.g. B12" />
+
+                        <span asp-validation-for="RoomNumber"
+                              class="text-danger small">
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- ACTIONS -->
+
+                <div class="d-flex gap-2 flex-wrap mt-2">
+
+                    <button type="submit"
+                            class="btn btn-knust">
+
+                        Create User
+
+                    </button>
+
+
+                    <a asp-controller="Admin"
+                       asp-action="Index"
+                       class="btn btn-outline-secondary">
+
+                        Cancel
+
+                    </a>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         INFORMATION PANEL
+         ===================================================== -->
+
+    <div class="col-lg-4">
+
+        <div class="card-soft p-4">
+
+            <div class="section-title mb-3">
+                Account roles
+            </div>
+
+
+            <div class="small text-muted">
+
+                <p>
+                    <strong>Student</strong>
+                    <br />
+                    Can report maintenance issues and track their requests.
+                </p>
+
+
+                <p>
+                    <strong>Staff</strong>
+                    <br />
+                    Can review maintenance requests and assign work to technicians.
+                </p>
+
+
+                <p class="mb-0">
+                    <strong>Maintenance</strong>
+                    <br />
+                    Can view assigned work orders and update their progress.
+                </p>
+
+            </div>
+
+        </div>
+
+
+        <div class="card-soft p-4 mt-4">
+
+            <div class="section-title mb-2">
+                Account security
+            </div>
+
+            <p class="small text-muted mb-0">
+                User passwords are hashed before being stored in the database.
+                Administrators do not have access to a user's actual password
+                after the account has been created.
+            </p>
+
+        </div>
+
+    </div>
+
+</div>

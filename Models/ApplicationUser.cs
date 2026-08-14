@@ -4,7 +4,8 @@ public enum UserRole
 {
     Student,
     Staff,
-    Maintenance
+    Maintenance,
+    Admin
 }
 
 public class ApplicationUser
