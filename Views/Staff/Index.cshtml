@@ -1,0 +1,85 @@
+@model List<Complaint>
+@{
+    ViewData["Title"] = (ViewBag.IsMaintenance == true) ? "My Work Orders" : "Maintenance Requests";
+    bool isMaintenance = ViewBag.IsMaintenance == true;
+}
+
+<div class="page-header d-flex justify-content-between align-items-end flex-wrap gap-3">
+    <div>
+        <div class="eyebrow">@(isMaintenance ? "Maintenance Operations" : "Hall Facilities")</div>
+        <h2>@(isMaintenance ? "My Work Orders" : "Maintenance Requests")</h2>
+        <p>@(isMaintenance ? "Requests assigned to you for inspection and resolution." : "Review, prioritise and assign reported hall maintenance issues.")</p>
+    </div>
+</div>
+
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">Submitted</div><div class="metric-value">@ViewBag.SubmittedCount</div><div class="metric-note">Awaiting assignment</div></div></div>
+    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">Assigned</div><div class="metric-value">@ViewBag.AssignedCount</div><div class="metric-note">Ready to be worked on</div></div></div>
+    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">In Progress</div><div class="metric-value">@ViewBag.InProgressCount</div><div class="metric-note">Currently being handled</div></div></div>
+    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">Resolved</div><div class="metric-value">@ViewBag.ResolvedCount</div><div class="metric-note">Completed requests</div></div></div>
+</div>
+
+<div class="card-soft mb-3 p-3">
+    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
+        <div class="section-title">Request register</div>
+        <form method="get" class="d-flex gap-2 flex-wrap">
+            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">All statuses</option>
+                @foreach (var s in Enum.GetValues<ComplaintStatus>())
+                {
+                    <option value="@s" selected="@(ViewBag.StatusFilter?.ToString() == s.ToString())">@StatusBadgeHelper.Display(s)</option>
+                }
+            </select>
+            <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
+                <option value="">All categories</option>
+                @foreach (var c in Enum.GetValues<ComplaintCategory>())
+                {
+                    <option value="@c" selected="@(ViewBag.CategoryFilter?.ToString() == c.ToString())">@c</option>
+                }
+            </select>
+        </form>
+    </div>
+</div>
+
+@if (!Model.Any())
+{
+    <div class="card-soft p-5 text-center">
+        <div class="section-title mb-1">No requests found</div>
+        <div class="text-muted">There are no maintenance requests matching the selected filters.</div>
+    </div>
+}
+else
+{
+    <div class="card-soft table-shell">
+        <table class="table align-middle">
+            <thead>
+                <tr>
+                    <th>Request</th>
+                    <th>Category</th>
+                    <th>Location</th>
+                    @if (!isMaintenance) { <th>Assigned To</th> }
+                    <th>Reported</th>
+                    <th>Status</th>
+                    <th></th>
+                </tr>
+            </thead>
+            <tbody>
+            @foreach (var c in Model)
+            {
+                <tr class="complaint-row">
+                    <td>
+                        <div class="fw-semibold">#@c.Id</div>
+                        <div class="small text-muted">@c.Student?.FullName</div>
+                    </td>
+                    <td>@c.Category</td>
+                    <td>@c.Hall · Room @c.RoomNumber</td>
+                    @if (!isMaintenance) { <td>@(c.AssignedTo?.FullName ?? "Unassigned")</td> }
+                    <td>@c.DateCreated.ToString("dd MMM yyyy")</td>
+                    <td><span class="status-badge @StatusBadgeHelper.CssClass(c.Status)">@StatusBadgeHelper.Display(c.Status)</span></td>
+                    <td class="text-end"><a asp-action="Details" asp-route-id="@c.Id" class="btn btn-sm btn-outline-secondary">View</a></td>
+                </tr>
+            }
+            </tbody>
+        </table>
+    </div>
+}

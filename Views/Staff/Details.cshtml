@@ -1,0 +1,128 @@
+@model Complaint
+@{
+    bool isMaintenance = ViewBag.IsMaintenance == true;
+    var maintenanceStaff = ViewBag.MaintenanceStaff as List<ApplicationUser>;
+    ViewData["Title"] = isMaintenance ? $"Work Order #{Model.Id}" : $"Request #{Model.Id}";
+}
+
+<div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-3">
+    <div class="work-order-header">
+        <div class="eyebrow">@(isMaintenance ? "Assigned Work Order" : "Maintenance Request")</div>
+        <h2 class="mb-1">#@Model.Id · @Model.Category</h2>
+        <p>@Model.Hall · Room @Model.RoomNumber</p>
+    </div>
+    <span class="status-badge @StatusBadgeHelper.CssClass(Model.Status)">@StatusBadgeHelper.Display(Model.Status)</span>
+</div>
+
+<div class="row g-4">
+    <div class="col-lg-7">
+        <div class="card-soft p-4 mb-4">
+            <div class="section-title mb-4">Request details</div>
+
+            <div class="row">
+                <div class="col-sm-6">
+                    <div class="detail-label">Reported by</div>
+                    <div class="detail-value">@Model.Student?.FullName</div>
+                </div>
+                <div class="col-sm-6">
+                    <div class="detail-label">Reported</div>
+                    <div class="detail-value">@Model.DateCreated.ToString("dd MMM yyyy, h:mm tt")</div>
+                </div>
+            </div>
+
+            <div class="detail-label">Description</div>
+            <div class="detail-value">@Model.Description</div>
+
+            @if (!string.IsNullOrEmpty(Model.PhotoPath))
+            {
+                <div class="detail-label">Attached photo</div>
+                <img src="@Model.PhotoPath" class="img-fluid rounded border mb-2" style="max-height:340px;" alt="Maintenance issue photo" />
+            }
+        </div>
+
+        <div class="card-soft p-4">
+            <div class="section-title mb-4">Activity</div>
+            @if (!Model.Updates.Any())
+            {
+                <p class="text-muted mb-0">No activity has been recorded yet.</p>
+            }
+            else
+            {
+                foreach (var u in Model.Updates.OrderByDescending(x => x.Timestamp))
+                {
+                    <div class="timeline-item">
+                        <span class="timeline-dot"></span>
+                        <div class="fw-semibold small">@u.Note</div>
+                        <div class="text-muted small mt-1">@u.UpdatedBy?.FullName · @u.Timestamp.ToString("dd MMM yyyy, h:mm tt")</div>
+                    </div>
+                }
+            }
+        </div>
+    </div>
+
+    <div class="col-lg-5">
+        @if (!isMaintenance)
+        {
+            <div class="card-soft p-4 mb-4">
+                <div class="section-title mb-1">Assignment</div>
+                <p class="text-muted small mb-3">Route this request to the appropriate maintenance technician.</p>
+
+                @if (Model.AssignedToId == null)
+                {
+                    <form asp-controller="Staff" asp-action="Assign" method="post">
+                        @Html.AntiForgeryToken()
+                        <input type="hidden" name="complaintId" value="@Model.Id" />
+                        <select name="assignToId" class="form-select mb-3" required>
+                            <option value="">Select technician</option>
+                            @if (maintenanceStaff != null)
+                            {
+                                foreach (var m in maintenanceStaff)
+                                {
+                                    <option value="@m.Id">@m.FullName</option>
+                                }
+                            }
+                        </select>
+                        <button type="submit" class="btn btn-knust w-100">Assign Work Order</button>
+                    </form>
+                }
+                else
+                {
+                    <div class="detail-label">Assigned technician</div>
+                    <div class="detail-value mb-0">@Model.AssignedTo?.FullName</div>
+                }
+            </div>
+        }
+
+        @if (isMaintenance)
+        {
+            <div class="card-soft p-4">
+                <div class="section-title mb-1">Update work order</div>
+                <p class="text-muted small mb-3">Record progress and leave a note for the hall staff.</p>
+
+                <form asp-controller="Staff" asp-action="UpdateStatus" method="post">
+                    @Html.AntiForgeryToken()
+                    <input type="hidden" name="complaintId" value="@Model.Id" />
+                    <label class="form-label">Status</label>
+                    <select name="status" class="form-select mb-3" required>
+                        <option value="Assigned" selected="@(Model.Status == ComplaintStatus.Assigned)">Assigned</option>
+                        <option value="InProgress" selected="@(Model.Status == ComplaintStatus.InProgress)">In Progress</option>
+                        <option value="Resolved" selected="@(Model.Status == ComplaintStatus.Resolved)">Resolved</option>
+                    </select>
+                    <label class="form-label">Work note</label>
+                    <textarea name="note" class="form-control mb-3" rows="4" placeholder="Describe what you inspected, repaired or replaced..."></textarea>
+                    <button type="submit" class="btn btn-knust w-100">Save Update</button>
+                </form>
+            </div>
+        }
+        else if (Model.AssignedToId != null)
+        {
+            <div class="card-soft p-4">
+                <div class="section-title mb-1">Current status</div>
+                <p class="text-muted small mb-3">Status is updated by the assigned maintenance technician.</p>
+                <span class="status-badge @StatusBadgeHelper.CssClass(Model.Status)">@StatusBadgeHelper.Display(Model.Status)</span>
+            </div>
+        }
+    </div>
+</div>
+
+<a asp-action="Index" class="btn btn-outline-secondary mt-4">← Back to @(isMaintenance ? "my work orders" : "requests")</a>

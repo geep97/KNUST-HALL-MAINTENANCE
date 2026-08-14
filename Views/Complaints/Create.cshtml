@@ -1,0 +1,282 @@
+@model ComplaintCreateViewModel
+
+@{
+    ViewData["Title"] = "Report an Issue";
+}
+
+<div class="page-header">
+
+    <div class="eyebrow">
+        Student Services
+    </div>
+
+    <h2>
+        Report a Maintenance Issue
+    </h2>
+
+    <p>
+        Provide enough detail for hall staff to identify and assign the problem quickly.
+    </p>
+
+</div>
+
+
+<div class="row g-4">
+
+    <!-- =====================================================
+         MAIN FORM
+         ===================================================== -->
+
+    <div class="col-lg-8">
+
+        <div class="card-soft p-4">
+
+            <form asp-controller="Complaints"
+                  asp-action="Create"
+                  method="post"
+                  enctype="multipart/form-data">
+
+                @Html.AntiForgeryToken()
+
+
+                <!-- =================================================
+                     ISSUE INFORMATION
+                     ================================================= -->
+
+                <div class="section-title mb-4">
+                    Issue information
+                </div>
+
+
+                <!-- CATEGORY -->
+
+                <div class="mb-3">
+
+                    <label asp-for="Category"
+                           class="form-label">
+                        Category
+                    </label>
+
+                    <select asp-for="Category"
+                            asp-items="Html.GetEnumSelectList<ComplaintCategory>()"
+                            class="form-select">
+
+                        <option value="">
+                            Select an issue category
+                        </option>
+
+                    </select>
+
+                    <span asp-validation-for="Category"
+                          class="text-danger small">
+                    </span>
+
+                </div>
+
+
+                <!-- HALL + ROOM -->
+
+                <div class="row">
+
+                    <div class="col-md-6 mb-3">
+
+                        <label asp-for="Hall"
+                               class="form-label">
+                            Hall
+                        </label>
+
+                        <input asp-for="Hall"
+                               class="form-control"
+                               placeholder="e.g. Unity Hall" />
+
+                        <span asp-validation-for="Hall"
+                              class="text-danger small">
+                        </span>
+
+                    </div>
+
+
+                    <div class="col-md-6 mb-3">
+
+                        <label asp-for="RoomNumber"
+                               class="form-label">
+                            Room number
+                        </label>
+
+                        <input asp-for="RoomNumber"
+                               class="form-control"
+                               placeholder="e.g. B12" />
+
+                        <span asp-validation-for="RoomNumber"
+                              class="text-danger small">
+                        </span>
+
+                    </div>
+
+                </div>
+
+
+                <!-- DESCRIPTION -->
+
+                <div class="mb-3">
+
+                    <label asp-for="Description"
+                           class="form-label">
+                        Description
+                    </label>
+
+                    <textarea asp-for="Description"
+                              class="form-control"
+                              rows="5"
+                              placeholder="What is wrong? When did you notice it? Include any useful details..."></textarea>
+
+                    <span asp-validation-for="Description"
+                          class="text-danger small">
+                    </span>
+
+                </div>
+
+
+                <!-- =================================================
+                     PHOTO
+                     ================================================= -->
+
+                <div class="mb-4">
+
+                    <label asp-for="Photo"
+                           class="form-label">
+
+                        Photo
+
+                        <span class="fw-normal text-muted">
+                            (optional)
+                        </span>
+
+                    </label>
+
+
+                    <input asp-for="Photo"
+                           type="file"
+                           class="form-control"
+                           accept=".jpg,.jpeg,.png,.webp" />
+
+
+                    <span asp-validation-for="Photo"
+                          class="text-danger small">
+                    </span>
+
+
+                    <div class="form-text">
+
+                        JPG, JPEG, PNG or WEBP.
+                        Maximum size: 5 MB.
+
+                        <br />
+
+                        A clear photo can help maintenance staff
+                        identify the issue before visiting your room.
+
+                    </div>
+
+                </div>
+
+
+                <!-- =================================================
+                     BUTTONS
+                     ================================================= -->
+
+                <div class="d-flex gap-2 flex-wrap">
+
+                    <button type="submit"
+                            class="btn btn-knust">
+
+                        Submit Request
+
+                    </button>
+
+
+                    <a asp-controller="Complaints"
+                       asp-action="MyComplaints"
+                       class="btn btn-outline-secondary">
+
+                        Cancel
+
+                    </a>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <!-- =====================================================
+         INFORMATION PANEL
+         ===================================================== -->
+
+    <div class="col-lg-4">
+
+        <div class="card-soft p-4">
+
+            <div class="section-title mb-3">
+                What happens next?
+            </div>
+
+
+            <div class="small text-muted">
+
+                <p>
+
+                    <strong>1. Submitted</strong>
+
+                    <br />
+
+                    Your request is recorded in the hall
+                    maintenance register.
+
+                </p>
+
+
+                <p>
+
+                    <strong>2. Assigned</strong>
+
+                    <br />
+
+                    Hall staff review the issue and assign it
+                    to the appropriate technician.
+
+                </p>
+
+
+                <p>
+
+                    <strong>3. In progress</strong>
+
+                    <br />
+
+                    The technician records progress while
+                    working on the request.
+
+                </p>
+
+
+                <p class="mb-0">
+
+                    <strong>4. Resolved</strong>
+
+                    <br />
+
+                    You can see when the request has been completed.
+
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>

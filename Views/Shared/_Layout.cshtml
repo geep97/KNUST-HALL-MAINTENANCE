@@ -1,0 +1,231 @@
+@using System.Security.Claims
+@using KnustHallMaintenance.Models
+@{
+    var role = User.FindFirstValue(ClaimTypes.Role);
+    var currentController = ViewContext.RouteData.Values["controller"]?.ToString();
+}
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+
+    <title>@ViewData["Title"] - KNUST Hall Maintenance</title>
+
+    <link rel="stylesheet"
+          href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/css/bootstrap.min.css" />
+
+    <link rel="stylesheet"
+          href="~/css/site.css"
+          asp-append-version="true" />
+</head>
+
+<body>
+
+    <!-- Institutional top bar -->
+    <div class="knust-topbar">
+        <div class="container d-flex align-items-center justify-content-between">
+            <span>
+                KWAME NKRUMAH UNIVERSITY OF SCIENCE AND TECHNOLOGY
+            </span>
+
+            <span class="d-none d-md-inline">
+                Hall Facilities &amp; Maintenance
+            </span>
+        </div>
+    </div>
+
+
+    <!-- Portal branding -->
+    <header class="knust-header">
+        <div class="container">
+
+            <a class="brand-lockup" href="/">
+
+                <!-- Actual KNUST crest -->
+                <img src="~/images/crest.png"
+                     alt="Kwame Nkrumah University of Science and Technology"
+                     class="brand-logo" />
+
+                <!-- Portal identity -->
+                <span class="brand-text">
+
+                    <span class="brand-title">
+                        Hall Maintenance Portal
+                    </span>
+
+                    <span class="brand-subtitle">
+                        Facilities reporting and work-order management
+                    </span>
+
+                </span>
+
+            </a>
+
+        </div>
+    </header>
+
+
+    @if (User.Identity?.IsAuthenticated == true)
+    {
+        <!-- Portal navigation -->
+        <nav class="navbar navbar-expand-md knust-nav py-0">
+
+            <div class="container">
+
+                <!-- Mobile navigation toggle -->
+                <button class="navbar-toggler my-2"
+                        type="button"
+                        data-bs-toggle="collapse"
+                        data-bs-target="#portalNav"
+                        aria-controls="portalNav"
+                        aria-expanded="false"
+                        aria-label="Toggle navigation">
+
+                    <span class="navbar-toggler-icon"></span>
+
+                </button>
+
+
+                <div class="collapse navbar-collapse"
+                     id="portalNav">
+
+                    <!-- Main navigation -->
+                    <ul class="navbar-nav me-auto">
+
+                        @if (role == nameof(UserRole.Student))
+                        {
+                            <li class="nav-item">
+
+                                <a class="nav-link @(currentController == "Complaints" ? "active" : "")"
+                                   asp-controller="Complaints"
+                                   asp-action="MyComplaints">
+
+                                    My Requests
+
+                                </a>
+
+                            </li>
+
+                            <li class="nav-item">
+
+                                <a class="nav-link"
+                                   asp-controller="Complaints"
+                                   asp-action="Create">
+
+                                    Report an Issue
+
+                                </a>
+
+                            </li>
+                        }
+                        else
+                        {
+                            <li class="nav-item">
+
+                                <a class="nav-link @(currentController == "Staff" ? "active" : "")"
+                                   asp-controller="Staff"
+                                   asp-action="Index">
+
+                                    @(
+                                        role == nameof(UserRole.Maintenance)
+                                            ? "My Work Orders"
+                                            : "Maintenance Requests"
+                                    )
+
+                                </a>
+
+                            </li>
+                        }
+
+                    </ul>
+
+
+                    <!-- User information -->
+                    <div class="d-flex align-items-center gap-3 py-2">
+
+                        <span class="user-chip">
+
+                            @User.Identity?.Name
+
+                            <span class="opacity-75">
+                                · @role
+                            </span>
+
+                        </span>
+
+
+                        <!-- Logout -->
+                        <form asp-controller="Account"
+                              asp-action="Logout"
+                              method="post"
+                              class="m-0">
+
+                            @Html.AntiForgeryToken()
+
+                            <button type="submit"
+                                    class="btn btn-sm btn-light-outline">
+
+                                Sign out
+
+                            </button>
+
+                        </form>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </nav>
+    }
+
+
+    <!-- Main application content -->
+    <main class="main-shell">
+
+        <div class="container pb-5">
+
+            @if (TempData["Success"] != null)
+            {
+                <div class="alert alert-success border-0 shadow-sm">
+
+                    @TempData["Success"]
+
+                </div>
+            }
+
+            @RenderBody()
+
+        </div>
+
+    </main>
+
+
+    <!-- Footer -->
+    <footer class="site-footer">
+
+        <div class="container d-flex justify-content-between flex-wrap gap-2">
+
+            <span>
+                KNUST Hall Maintenance Portal
+            </span>
+
+            <span>
+                Facilities &amp; Maintenance Operations
+            </span>
+
+        </div>
+
+    </footer>
+
+
+    <!-- Bootstrap JavaScript -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.3/js/bootstrap.bundle.min.js">
+    </script>
+
+    @RenderSection("Scripts", required: false)
+
+</body>
+</html>

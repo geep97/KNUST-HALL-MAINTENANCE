@@ -1,0 +1,25 @@
+namespace KnustHallMaintenance.Models;
+
+public class Complaint
+{
+    public int Id { get; set; }
+
+    public int StudentId { get; set; }
+    public ApplicationUser? Student { get; set; }
+
+    public ComplaintCategory Category { get; set; }
+    public string Description { get; set; } = string.Empty;
+    public string Hall { get; set; } = string.Empty;
+    public string RoomNumber { get; set; } = string.Empty;
+    public string? PhotoPath { get; set; }
+
+    public ComplaintStatus Status { get; set; } = ComplaintStatus.Submitted;
+
+    public int? AssignedToId { get; set; }
+    public ApplicationUser? AssignedTo { get; set; }
+
+    public DateTime DateCreated { get; set; } = DateTime.Now;
+    public DateTime? DateResolved { get; set; }
+
+    public ICollection<ComplaintUpdate> Updates { get; set; } = new List<ComplaintUpdate>();
+}
