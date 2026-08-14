@@ -23,54 +23,19 @@ public static class DbInitializer
             };
 
             admin.PasswordHash =
-                hasher.HashPassword(admin, "Admin123!");
+                hasher.HashPassword(
+                    admin,
+                    "Admin123!"
+                );
 
             context.Users.Add(admin);
         }
 
 
         // ============================================================
-        // HALL STAFF
+        // SAVE
         // ============================================================
 
-        if (!context.Users.Any(u => u.Role == UserRole.HallStaff))
-        {
-            var staff = new ApplicationUser
-            {
-                FullName = "Hall Assistant - Unity Hall",
-                Email = "staff@knust.edu.gh",
-                Role = UserRole.HallStaff,
-                Hall = "Unity Hall"
-            };
-
-            staff.PasswordHash =
-                hasher.HashPassword(staff, "Password123!");
-
-            context.Users.Add(staff);
-        }
-
-
-        // ============================================================
-        // MAINTENANCE PERSONNEL
-        // ============================================================
-
-        if (!context.Users.Any(u => u.Role == UserRole.Maintenance))
-        {
-            var technician = new ApplicationUser
-            {
-                FullName = "John Boateng (Electrician)",
-                Email = "maintenance@knust.edu.gh",
-                Role = UserRole.Maintenance
-            };
-
-            technician.PasswordHash =
-                hasher.HashPassword(technician, "Password123!");
-
-            context.Users.Add(technician);
-        }
-
-
-        // Save Admin / Staff / Maintenance
         context.SaveChanges();
     }
 }

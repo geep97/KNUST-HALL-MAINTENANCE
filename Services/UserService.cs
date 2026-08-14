@@ -38,7 +38,8 @@ public class UserService : IUserService
     public async Task<ApplicationUser?> GetByIdAsync(
         int id)
     {
-        return await _context.Users.FindAsync(id);
+        return await _context.Users
+            .FindAsync(id);
     }
 
 
@@ -50,7 +51,6 @@ public class UserService : IUserService
     {
         return await _context.Users
             .OrderBy(u => u.Role)
-            .ThenBy(u => u.Hall)
             .ThenBy(u => u.FullName)
             .ToListAsync();
     }
@@ -65,6 +65,7 @@ public class UserService : IUserService
         return await _context.Users
             .Where(u => u.Role == UserRole.Maintenance)
             .OrderBy(u => u.Hall)
+            .ThenBy(u => u.MaintenanceSpecialization)
             .ThenBy(u => u.FullName)
             .ToListAsync();
     }
@@ -79,7 +80,8 @@ public class UserService : IUserService
         string email,
         string password,
         UserRole role,
-        string? hall = null)
+        string? hall,
+        MaintenanceSpecialization? maintenanceSpecialization)
     {
         var user = new ApplicationUser
         {
@@ -87,13 +89,22 @@ public class UserService : IUserService
             Email = email,
             Role = role,
 
-            // Admin has no hall.
-            // Hall Staff and Maintenance have their assigned hall.
-            Hall = role == UserRole.Admin
-                ? null
-                : hall
+            // Hall Staff and Maintenance
+            // have an assigned hall.
+            Hall = hall,
+
+            // Only Maintenance users should have
+            // a maintenance specialization.
+            MaintenanceSpecialization =
+                role == UserRole.Maintenance
+                    ? maintenanceSpecialization
+                    : null
         };
 
+
+        // ========================================================
+        // HASH PASSWORD
+        // ========================================================
 
         user.PasswordHash =
             _hasher.HashPassword(
@@ -101,6 +112,10 @@ public class UserService : IUserService
                 password
             );
 
+
+        // ========================================================
+        // SAVE USER
+        // ========================================================
 
         _context.Users.Add(user);
 
@@ -118,13 +133,10 @@ public class UserService : IUserService
         ApplicationUser user,
         string password)
     {
-        var result =
-            _hasher.VerifyHashedPassword(
-                user,
-                user.PasswordHash,
-                password
-            );
-
-        return result != PasswordVerificationResult.Failed;
+        return _hasher.VerifyHashedPassword(
+            user,
+            user.PasswordHash,
+            password
+        ) != PasswordVerificationResult.Failed;
     }
 }

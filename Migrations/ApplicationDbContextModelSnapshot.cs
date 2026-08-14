@@ -41,6 +41,9 @@ namespace KnustHallMaintenance.Migrations
                     b.Property<string>("Hall")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<int?>("MaintenanceSpecialization")
+                        .HasColumnType("int");
+
                     b.Property<string>("PasswordHash")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");

@@ -6,7 +6,6 @@ public class ApplicationUser
 {
     public int Id { get; set; }
 
-
     // =========================================================
     // BASIC USER INFORMATION
     // =========================================================
@@ -35,6 +34,17 @@ public class ApplicationUser
     public string? Hall { get; set; }
 
     public string? RoomNumber { get; set; }
+
+
+    // =========================================================
+    // MAINTENANCE SPECIALIZATION
+    // =========================================================
+
+    public MaintenanceSpecialization? MaintenanceSpecialization
+    {
+        get;
+        set;
+    }
 
 
     // =========================================================

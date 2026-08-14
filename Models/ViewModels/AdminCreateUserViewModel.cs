@@ -26,4 +26,9 @@ public class AdminCreateUserViewModel
 
     // Required for Hall Staff and Maintenance
     public string? Hall { get; set; }
+
+
+    // Required only for Maintenance
+    [Display(Name = "Maintenance specialization")]
+    public MaintenanceSpecialization? MaintenanceSpecialization { get; set; }
 }

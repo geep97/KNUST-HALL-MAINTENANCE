@@ -76,7 +76,7 @@ public class AdminController : Controller
 
 
         // -----------------------------------------------------
-        // Hall is required for Hall Staff and Maintenance
+        // HALL STAFF + MAINTENANCE MUST HAVE A HALL
         // -----------------------------------------------------
 
         if (
@@ -102,7 +102,28 @@ public class AdminController : Controller
 
 
         // -----------------------------------------------------
-        // Admin should not have a hall
+        // MAINTENANCE MUST HAVE A SPECIALIZATION
+        // -----------------------------------------------------
+
+        if (model.Role == UserRole.Maintenance)
+        {
+            if (!model.MaintenanceSpecialization.HasValue)
+            {
+                ModelState.AddModelError(
+                    nameof(model.MaintenanceSpecialization),
+                    "Please select a maintenance specialization."
+                );
+            }
+        }
+        else
+        {
+            // Staff/Admin should never have a specialization
+            model.MaintenanceSpecialization = null;
+        }
+
+
+        // -----------------------------------------------------
+        // ADMIN SHOULD NOT HAVE A HALL
         // -----------------------------------------------------
 
         if (model.Role == UserRole.Admin)
@@ -112,7 +133,7 @@ public class AdminController : Controller
 
 
         // -----------------------------------------------------
-        // Check validation
+        // CHECK VALIDATION
         // -----------------------------------------------------
 
         if (!ModelState.IsValid)
@@ -122,7 +143,7 @@ public class AdminController : Controller
 
 
         // -----------------------------------------------------
-        // Prevent duplicate email
+        // PREVENT DUPLICATE EMAIL
         // -----------------------------------------------------
 
         var existingUser =
@@ -142,7 +163,7 @@ public class AdminController : Controller
 
 
         // -----------------------------------------------------
-        // Create user
+        // CREATE USER
         // -----------------------------------------------------
 
         await _userService.CreateAsync(
@@ -150,12 +171,13 @@ public class AdminController : Controller
             model.Email.Trim(),
             model.Password,
             model.Role,
-            model.Hall
+            model.Hall,
+            model.MaintenanceSpecialization
         );
 
 
         // -----------------------------------------------------
-        // Success
+        // SUCCESS
         // -----------------------------------------------------
 
         TempData["Success"] =
