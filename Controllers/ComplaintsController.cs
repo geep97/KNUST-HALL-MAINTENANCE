@@ -33,9 +33,7 @@ public class ComplaintsController : Controller
     }
 
 
-    // =========================================================
-    // CURRENT STUDENT
-    // =========================================================
+   
 
     private int CurrentUserId =>
         int.Parse(
@@ -51,9 +49,7 @@ public class ComplaintsController : Controller
         User.FindFirstValue("RoomNumber") ?? string.Empty;
 
 
-    // =========================================================
-    // MY COMPLAINTS
-    // =========================================================
+   
 
     public async Task<IActionResult> MyComplaints()
     {
@@ -64,9 +60,7 @@ public class ComplaintsController : Controller
     }
 
 
-    // =========================================================
-    // CREATE - GET
-    // =========================================================
+    
 
     [HttpGet]
     public IActionResult Create()
@@ -81,44 +75,30 @@ public class ComplaintsController : Controller
     }
 
 
-    // =========================================================
-    // CREATE - POST
-    // =========================================================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(
         ComplaintCreateViewModel model)
     {
-        Console.WriteLine("================================");
-        Console.WriteLine("CREATE REQUEST RECEIVED");
-        Console.WriteLine("================================");
+        
 
 
         try
         {
-            // -------------------------------------------------
-            // GET HALL AND ROOM FROM AUTHENTICATED STUDENT
-            // -------------------------------------------------
+           
 
             var hall = CurrentStudentHall;
             var roomNumber = CurrentStudentRoom;
 
 
-            // -------------------------------------------------
-            // IMPORTANT:
-            // Never trust Hall or RoomNumber submitted by the
-            // browser. The student's account is the source
-            // of truth.
-            // -------------------------------------------------
+           
 
             model.Hall = hall;
             model.RoomNumber = roomNumber;
 
 
-            // -------------------------------------------------
-            // READ PHOTO
-            // -------------------------------------------------
+           
 
             IFormFile? uploadedPhoto = null;
 
@@ -135,9 +115,6 @@ public class ComplaintsController : Controller
             }
 
 
-            // -------------------------------------------------
-            // VALIDATE
-            // -------------------------------------------------
 
             if (!ModelState.IsValid)
             {
@@ -147,9 +124,7 @@ public class ComplaintsController : Controller
             }
 
 
-            // -------------------------------------------------
-            // PHOTO
-            // -------------------------------------------------
+          
 
             string? photoPath = null;
 
@@ -168,9 +143,7 @@ public class ComplaintsController : Controller
                 );
 
 
-                // ---------------------------------------------
-                // SIZE
-                // ---------------------------------------------
+                
 
                 if (uploadedPhoto.Length > MaxPhotoSize)
                 {
@@ -183,9 +156,7 @@ public class ComplaintsController : Controller
                 }
 
 
-                // ---------------------------------------------
-                // EXTENSION
-                // ---------------------------------------------
+                
 
                 var extension =
                     Path.GetExtension(
@@ -209,9 +180,6 @@ public class ComplaintsController : Controller
                 }
 
 
-                // ---------------------------------------------
-                // UPLOAD DIRECTORY
-                // ---------------------------------------------
 
                 var uploadsDirectory =
                     Path.Combine(
@@ -230,9 +198,7 @@ public class ComplaintsController : Controller
                 );
 
 
-                // ---------------------------------------------
-                // SAFE FILE NAME
-                // ---------------------------------------------
+              
 
                 var fileName =
                     $"{Guid.NewGuid():N}{extension}";
@@ -250,9 +216,7 @@ public class ComplaintsController : Controller
                 );
 
 
-                // ---------------------------------------------
-                // SAVE FILE
-                // ---------------------------------------------
+               
 
                 await using (
                     var stream = new FileStream(
@@ -282,9 +246,6 @@ public class ComplaintsController : Controller
             }
 
 
-            // -------------------------------------------------
-            // CREATE COMPLAINT
-            // -------------------------------------------------
 
             var complaint = new Complaint
             {
@@ -294,9 +255,6 @@ public class ComplaintsController : Controller
 
                 Description = model.Description,
 
-                // IMPORTANT:
-                // These come from the authenticated student,
-                // NOT from the submitted form.
                 Hall = hall,
 
                 RoomNumber = roomNumber,
@@ -305,9 +263,7 @@ public class ComplaintsController : Controller
             };
 
 
-            // -------------------------------------------------
-            // SAVE COMPLAINT
-            // -------------------------------------------------
+           
 
             Console.WriteLine(
                 "Saving complaint..."
@@ -344,8 +300,7 @@ public class ComplaintsController : Controller
             );
 
 
-            // Make sure the values are still available
-            // if the form needs to be displayed again.
+           
             model.Hall = CurrentStudentHall;
             model.RoomNumber = CurrentStudentRoom;
 
@@ -355,9 +310,7 @@ public class ComplaintsController : Controller
     }
 
 
-    // =========================================================
-    // DETAILS
-    // =========================================================
+    
 
     public async Task<IActionResult> Details(int id)
     {

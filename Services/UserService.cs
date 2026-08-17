@@ -8,83 +8,70 @@ namespace KnustHallMaintenance.Services;
 public class UserService : IUserService
 {
     private readonly ApplicationDbContext _context;
-    private readonly IPasswordHasher<ApplicationUser> _hasher;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public UserService(
         ApplicationDbContext context,
-        IPasswordHasher<ApplicationUser> hasher)
+        UserManager<ApplicationUser> userManager)
     {
         _context = context;
-        _hasher = hasher;
+        _userManager = userManager;
     }
-
-
-    // ============================================================
-    // GET USER BY EMAIL
-    // ============================================================
 
     public async Task<ApplicationUser?> GetByEmailAsync(
         string email)
     {
-        return await _context.Users
-            .FirstOrDefaultAsync(
-                u => u.Email == email
-            );
+        return await _userManager.FindByEmailAsync(email);
     }
-
-
-    // ============================================================
-    // GET USER BY ID
-    // ============================================================
 
     public async Task<ApplicationUser?> GetByIdAsync(
         int id)
     {
-        return await _context.Users
-            .FindAsync(id);
+        return await _userManager.FindByIdAsync(
+            id.ToString()
+        );
     }
-
-
-    // ============================================================
-    // GET ALL PORTAL USERS
-    // ============================================================
 
     public async Task<List<ApplicationUser>> GetAllAsync()
     {
         return await _context.Users
-            .OrderBy(u => u.Role)
-            .ThenBy(u => u.Hall)
+            .OrderBy(u => u.Hall)
             .ThenBy(u => u.FullName)
             .ToListAsync();
     }
 
-
-    // ============================================================
-    // GET ACTIVE MAINTENANCE PERSONNEL
-    // ============================================================
-
-    public async Task<List<ApplicationUser>> GetMaintenanceStaffAsync(
-    string hall)
+    public async Task<List<ApplicationUser>>
+        GetMaintenanceStaffAsync(string hall)
     {
         if (string.IsNullOrWhiteSpace(hall))
         {
             return new List<ApplicationUser>();
         }
 
-        return await _context.Users
+        var users = await _context.Users
             .Where(u =>
-                u.Role == UserRole.Maintenance &&
                 u.IsActive &&
-                u.Hall == hall)
+                u.Hall == hall &&
+                u.MaintenanceSpecialization != null)
             .OrderBy(u => u.MaintenanceSpecialization)
             .ThenBy(u => u.FullName)
             .ToListAsync();
+
+        var maintenanceStaff =
+            new List<ApplicationUser>();
+
+        foreach (var user in users)
+        {
+            if (await _userManager.IsInRoleAsync(
+                user,
+                UserRole.Maintenance.ToString()))
+            {
+                maintenanceStaff.Add(user);
+            }
+        }
+
+        return maintenanceStaff;
     }
-
-
-    // ============================================================
-    // CREATE USER
-    // ============================================================
 
     public async Task<ApplicationUser> CreateAsync(
         string fullName,
@@ -96,79 +83,52 @@ public class UserService : IUserService
     {
         var user = new ApplicationUser
         {
-            FullName = fullName,
+            UserName = email,
             Email = email,
-            Role = role,
+            FullName = fullName,
             Hall = hall,
-
-            // Only Maintenance users should have
-            // a maintenance specialization.
+            IsActive = true,
             MaintenanceSpecialization =
                 role == UserRole.Maintenance
                     ? maintenanceSpecialization
-                    : null,
-
-            IsActive = true
+                    : null
         };
 
+        var result = await _userManager.CreateAsync(
+            user,
+            password
+        );
 
-        // ========================================================
-        // HASH PASSWORD
-        // ========================================================
-
-        user.PasswordHash =
-            _hasher.HashPassword(
-                user,
-                password
+        if (!result.Succeeded)
+        {
+            var errors = string.Join(
+                ", ",
+                result.Errors.Select(e => e.Description)
             );
 
+            throw new InvalidOperationException(errors);
+        }
 
-        // ========================================================
-        // SAVE USER
-        // ========================================================
+        var roleResult =
+            await _userManager.AddToRoleAsync(
+                user,
+                role.ToString()
+            );
 
-        _context.Users.Add(user);
+        if (!roleResult.Succeeded)
+        {
+            await _userManager.DeleteAsync(user);
 
-        await _context.SaveChangesAsync();
+            var errors = string.Join(
+                ", ",
+                roleResult.Errors.Select(e => e.Description)
+            );
+
+            throw new InvalidOperationException(errors);
+        }
 
         return user;
     }
-
-
-    // ============================================================
-    // UPDATE USER
-    // ============================================================
-    //
-    // IMPORTANT:
-    //
-    // If a Maintenance worker is moved to another hall:
-    //
-    //     Old Hall
-    //         ↓
-    //     Admin changes Hall
-    //         ↓
-    //     Existing active assignments are removed
-    //         ↓
-    //     Complaint status is PRESERVED
-    //         ↓
-    //     New Hall Staff can reassign the complaint
-    //
-    // Example:
-    //
-    //     Technician A
-    //     Unity Hall
-    //
-    //     Complaint
-    //     Status = InProgress
-    //     AssignedTo = Technician A
-    //
-    //     Technician A moved to Independence Hall
-    //
-    //     Complaint
-    //     Status = InProgress
-    //     AssignedTo = NULL
-    //
-    // ============================================================
 
     public async Task<bool> UpdateAsync(
         int id,
@@ -180,18 +140,20 @@ public class UserService : IUserService
         bool isActive)
     {
         var user =
-            await _context.Users
-                .FindAsync(id);
+            await _userManager.FindByIdAsync(
+                id.ToString()
+            );
 
         if (user == null)
         {
             return false;
         }
 
+        var currentRoles =
+            await _userManager.GetRolesAsync(user);
 
-        // ========================================================
-        // DETECT WHETHER THE HALL IS CHANGING
-        // ========================================================
+        var currentRole =
+            currentRoles.FirstOrDefault();
 
         var hallChanged =
             !string.Equals(
@@ -200,27 +162,9 @@ public class UserService : IUserService
                 StringComparison.OrdinalIgnoreCase
             );
 
-
-        // ========================================================
-        // MAINTENANCE WORKER HALL TRANSFER
-        // ========================================================
-        //
-        // If a maintenance worker moves halls, remove them from
-        // all unresolved complaints they are currently assigned to.
-        //
-        // We DO NOT change the complaint status.
-        //
-        // Assigned   -> Assigned
-        // InProgress -> InProgress
-        //
-        // This means the work itself is not forgotten.
-        // Only the responsible technician is removed.
-        //
-        // ========================================================
-
         if (
             hallChanged &&
-            user.Role == UserRole.Maintenance
+            currentRole == UserRole.Maintenance.ToString()
         )
         {
             var assignedComplaints =
@@ -230,132 +174,104 @@ public class UserService : IUserService
                         c.Status != ComplaintStatus.Resolved)
                     .ToListAsync();
 
-
             foreach (var complaint in assignedComplaints)
             {
-                // Remove the old technician.
-
                 complaint.AssignedToId = null;
-
-                // IMPORTANT:
-                //
-                // Do NOT do this:
-                //
-                // complaint.Status =
-                //     ComplaintStatus.Submitted;
-                //
-                // We want the current progress to remain intact.
             }
         }
 
-
-        // ========================================================
-        // UPDATE USER INFORMATION
-        // ========================================================
-
-        user.FullName =
-            fullName;
-
-        user.Email =
-            email;
-
-        user.Role =
-            role;
-
-        user.Hall =
-            hall;
-
-
-        // ========================================================
-        // UPDATE SPECIALIZATION
-        // ========================================================
-        //
-        // Only Maintenance users should have a specialization.
-        //
-        // ========================================================
+        user.FullName = fullName;
+        user.Email = email;
+        user.UserName = email;
+        user.Hall = hall;
+        user.IsActive = isActive;
 
         user.MaintenanceSpecialization =
             role == UserRole.Maintenance
                 ? maintenanceSpecialization
                 : null;
 
+        var updateResult =
+            await _userManager.UpdateAsync(user);
 
-        // ========================================================
-        // UPDATE ACTIVE STATUS
-        // ========================================================
+        if (!updateResult.Succeeded)
+        {
+            return false;
+        }
 
-        user.IsActive =
-            isActive;
+        if (currentRoles.Count > 0)
+        {
+            var removeResult =
+                await _userManager.RemoveFromRolesAsync(
+                    user,
+                    currentRoles
+                );
 
+            if (!removeResult.Succeeded)
+            {
+                return false;
+            }
+        }
 
-        // ========================================================
-        // SAVE EVERYTHING
-        // ========================================================
+        var addRoleResult =
+            await _userManager.AddToRoleAsync(
+                user,
+                role.ToString()
+            );
+
+        if (!addRoleResult.Succeeded)
+        {
+            return false;
+        }
 
         await _context.SaveChangesAsync();
 
         return true;
     }
-
-
-    // ============================================================
-    // ACTIVATE / DEACTIVATE
-    // ============================================================
 
     public async Task<bool> SetActiveAsync(
         int id,
         bool isActive)
     {
         var user =
-            await _context.Users
-                .FindAsync(id);
+            await _userManager.FindByIdAsync(
+                id.ToString()
+            );
 
         if (user == null)
         {
             return false;
         }
 
+        user.IsActive = isActive;
 
-        user.IsActive =
-            isActive;
+        var result =
+            await _userManager.UpdateAsync(user);
 
-
-        await _context.SaveChangesAsync();
-
-        return true;
+        return result.Succeeded;
     }
-
-
-    // ============================================================
-    // DELETE USER
-    // ============================================================
 
     public async Task<bool> DeleteAsync(
         int id)
     {
         var user =
-            await _context.Users
-                .FindAsync(id);
+            await _userManager.FindByIdAsync(
+                id.ToString()
+            );
 
         if (user == null)
         {
             return false;
         }
 
+        var roles =
+            await _userManager.GetRolesAsync(user);
 
-        // --------------------------------------------------------
-        // Never delete an administrator.
-        // --------------------------------------------------------
-
-        if (user.Role == UserRole.Admin)
+        if (roles.Contains(
+            UserRole.Admin.ToString()))
         {
             return false;
         }
-
-
-        // --------------------------------------------------------
-        // Do not delete users who have complaint assignments.
-        // --------------------------------------------------------
 
         var hasAssignedComplaints =
             await _context.Complaints
@@ -368,11 +284,6 @@ public class UserService : IUserService
             return false;
         }
 
-
-        // --------------------------------------------------------
-        // Do not delete users who have audit history.
-        // --------------------------------------------------------
-
         var hasComplaintUpdates =
             await _context.ComplaintUpdates
                 .AnyAsync(
@@ -384,27 +295,19 @@ public class UserService : IUserService
             return false;
         }
 
+        var result =
+            await _userManager.DeleteAsync(user);
 
-        _context.Users.Remove(user);
-
-        await _context.SaveChangesAsync();
-
-        return true;
+        return result.Succeeded;
     }
 
-
-    // ============================================================
-    // VERIFY PASSWORD
-    // ============================================================
-
-    public bool VerifyPassword(
+    public async Task<bool> IsInRoleAsync(
         ApplicationUser user,
-        string password)
+        UserRole role)
     {
-        return _hasher.VerifyHashedPassword(
+        return await _userManager.IsInRoleAsync(
             user,
-            user.PasswordHash,
-            password
-        ) != PasswordVerificationResult.Failed;
+            role.ToString()
+        );
     }
 }

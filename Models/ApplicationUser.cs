@@ -1,66 +1,19 @@
-using System.Collections.Generic;
+using Microsoft.AspNetCore.Identity;
 
 namespace KnustHallMaintenance.Models;
 
-public class ApplicationUser
+public class ApplicationUser : IdentityUser<int>
 {
-    public int Id { get; set; }
-
-    // =========================================================
-    // BASIC USER INFORMATION
-    // =========================================================
-
-    public string FullName { get; set; }
-        = string.Empty;
-
-    public string Email { get; set; }
-        = string.Empty;
-
-
-    // =========================================================
-    // AUTHENTICATION
-    // =========================================================
-
-    public string PasswordHash { get; set; }
-        = string.Empty;
-
-    public UserRole Role { get; set; }
+    public string FullName { get; set; } = string.Empty;
 
     public bool IsActive { get; set; } = true;
-
-
-    // =========================================================
-    // LOCATION
-    // =========================================================
 
     public string? Hall { get; set; }
 
     public string? RoomNumber { get; set; }
 
-
-    // =========================================================
-    // MAINTENANCE SPECIALIZATION
-    // =========================================================
-
-    public MaintenanceSpecialization? MaintenanceSpecialization
-    {
-        get;
-        set;
-    }
-
-
-    // =========================================================
-    // COMPLAINTS ASSIGNED TO THIS USER
-    // =========================================================
+    public MaintenanceSpecialization? MaintenanceSpecialization { get; set; }
 
     public ICollection<Complaint> AssignedComplaints { get; set; }
         = new List<Complaint>();
-
-
-    // =========================================================
-    // COMPLAINT UPDATES MADE BY THIS USER
-    // =========================================================
-
-    public ICollection<ComplaintUpdate> ComplaintUpdates { get; set; }
-        = new List<ComplaintUpdate>();
 }

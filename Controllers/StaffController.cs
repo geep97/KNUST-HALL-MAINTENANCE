@@ -7,23 +7,7 @@ using Microsoft.AspNetCore.Mvc;
 namespace KnustHallMaintenance.Controllers;
 
 
-// =========================================================
-// STAFF + MAINTENANCE CONTROLLER
-// =========================================================
-//
-// Hall Staff and Maintenance personnel share this dashboard.
-//
-// Hall Staff:
-// - View complaints belonging to their hall
-// - Open complaint details
-// - Assign complaints to maintenance personnel
-//
-// Maintenance:
-// - View only work orders assigned to them
-// - Open assigned complaint details
-// - Update work-order status
-//
-// =========================================================
+
 
 [Authorize(Roles = "HallStaff,Maintenance")]
 public class StaffController : Controller
@@ -41,10 +25,7 @@ public class StaffController : Controller
     }
 
 
-    // =========================================================
-    // CURRENT USER ID
-    // =========================================================
-
+   
     private int CurrentUserId =>
         int.Parse(
             User.FindFirstValue(
@@ -53,9 +34,7 @@ public class StaffController : Controller
         );
 
 
-    // =========================================================
-    // STAFF / MAINTENANCE DASHBOARD
-    // =========================================================
+   
 
     public async Task<IActionResult> Index(
         ComplaintStatus? status,
@@ -70,14 +49,7 @@ public class StaffController : Controller
         List<Complaint> complaints;
 
 
-        // =====================================================
-        // MAINTENANCE
-        // =====================================================
-        //
-        // Maintenance personnel only see complaints assigned
-        // to themselves.
-        //
-        // =====================================================
+       
 
         if (isMaintenance)
         {
@@ -90,14 +62,7 @@ public class StaffController : Controller
         }
 
 
-        // =====================================================
-        // HALL STAFF
-        // =====================================================
-        //
-        // Hall Staff only see complaints belonging to their
-        // assigned hall.
-        //
-        // =====================================================
+       
 
         else
         {
@@ -122,9 +87,7 @@ public class StaffController : Controller
         }
 
 
-        // =====================================================
-        // DASHBOARD FILTERS
-        // =====================================================
+        
 
         ViewBag.StatusFilter =
             status;
@@ -136,9 +99,7 @@ public class StaffController : Controller
             isMaintenance;
 
 
-        // =====================================================
-        // DASHBOARD COUNTS
-        // =====================================================
+        
 
         ViewBag.SubmittedCount =
             complaints.Count(
@@ -178,17 +139,7 @@ public class StaffController : Controller
     }
 
 
-    // =========================================================
-    // COMPLAINT DETAILS
-    // =========================================================
-    //
-    // Maintenance:
-    //     Can only view complaints assigned to themselves.
-    //
-    // Hall Staff:
-    //     Can only view complaints belonging to their hall.
-    //
-    // =========================================================
+   
 
     public async Task<IActionResult> Details(
         int id)
@@ -205,9 +156,7 @@ public class StaffController : Controller
         }
 
 
-        // =====================================================
-        // MAINTENANCE ACCESS
-        // =====================================================
+        
 
         if (
             User.IsInRole(
@@ -222,9 +171,6 @@ public class StaffController : Controller
         }
 
 
-        // =====================================================
-        // HALL STAFF ACCESS
-        // =====================================================
 
         if (
             User.IsInRole(
@@ -251,18 +197,7 @@ public class StaffController : Controller
         }
 
 
-        // =====================================================
-        // MAINTENANCE STAFF
-        // =====================================================
-        //
-        // Used by Hall Staff when assigning a complaint.
-        //
-        // We get all active maintenance personnel here.
-        // The ComplaintService performs the final security
-        // check to ensure the technician belongs to the
-        // complaint's hall.
-        //
-        // =====================================================
+       
 
             ViewBag.MaintenanceStaff =
         await _userService
@@ -283,23 +218,7 @@ public class StaffController : Controller
     }
 
 
-    // =========================================================
-    // ASSIGN COMPLAINT
-    // =========================================================
-    //
-    // ONLY Hall Staff can assign complaints.
-    //
-    // The ComplaintService performs the final checks:
-    //
-    // 1. Hall Staff belongs to complaint hall.
-    //
-    // 2. Selected technician is Maintenance.
-    //
-    // 3. Selected technician belongs to complaint hall.
-    //
-    // 4. Technician is active.
-    //
-    // =========================================================
+    
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -336,13 +255,7 @@ public class StaffController : Controller
     }
 
 
-    // =========================================================
-    // UPDATE WORK ORDER STATUS
-    // =========================================================
-    //
-    // ONLY Maintenance personnel can update status.
-    //
-    // =========================================================
+    
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -352,8 +265,7 @@ public class StaffController : Controller
         ComplaintStatus status,
         string? note)
     {
-        // A maintenance technician cannot move
-        // something back to Submitted.
+        
 
         if (
             status ==

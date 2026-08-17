@@ -1,23 +1,18 @@
 using KnustHallMaintenance.Models;
+using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
 
 namespace KnustHallMaintenance.Data;
 
-public class ApplicationDbContext : DbContext
+public class ApplicationDbContext
+    : IdentityDbContext<ApplicationUser, IdentityRole<int>, int>
 {
     public ApplicationDbContext(
         DbContextOptions<ApplicationDbContext> options)
         : base(options)
     {
     }
-
-
-    // =========================================================
-    // TABLES
-    // =========================================================
-
-    public DbSet<ApplicationUser> Users
-        => Set<ApplicationUser>();
 
     public DbSet<Student> Students
         => Set<Student>();
@@ -28,29 +23,14 @@ public class ApplicationDbContext : DbContext
     public DbSet<ComplaintUpdate> ComplaintUpdates
         => Set<ComplaintUpdate>();
 
-
-    // =========================================================
-    // MODEL CONFIGURATION
-    // =========================================================
-
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
-
-        // =====================================================
-        // APPLICATION USERS
-        // =====================================================
-
         modelBuilder.Entity<ApplicationUser>()
             .HasIndex(u => u.Email)
             .IsUnique();
-
-
-        // =====================================================
-        // STUDENTS
-        // =====================================================
 
         modelBuilder.Entity<Student>()
             .HasIndex(s => s.StudentId)
@@ -60,21 +40,11 @@ public class ApplicationDbContext : DbContext
             .HasIndex(s => s.Email)
             .IsUnique();
 
-
-        // =====================================================
-        // COMPLAINT -> STUDENT
-        // =====================================================
-
         modelBuilder.Entity<Complaint>()
             .HasOne(c => c.Student)
             .WithMany()
             .HasForeignKey(c => c.StudentId)
             .OnDelete(DeleteBehavior.Restrict);
-
-
-        // =====================================================
-        // COMPLAINT -> ASSIGNED USER
-        // =====================================================
 
         modelBuilder.Entity<Complaint>()
             .HasOne(c => c.AssignedTo)
@@ -82,21 +52,11 @@ public class ApplicationDbContext : DbContext
             .HasForeignKey(c => c.AssignedToId)
             .OnDelete(DeleteBehavior.Restrict);
 
-
-        // =====================================================
-        // COMPLAINT UPDATE -> COMPLAINT
-        // =====================================================
-
         modelBuilder.Entity<ComplaintUpdate>()
             .HasOne(u => u.Complaint)
             .WithMany(c => c.Updates)
             .HasForeignKey(u => u.ComplaintId)
             .OnDelete(DeleteBehavior.Cascade);
-
-
-        // =====================================================
-        // COMPLAINT UPDATE -> USER
-        // =====================================================
 
         modelBuilder.Entity<ComplaintUpdate>()
             .HasOne(u => u.UpdatedBy)

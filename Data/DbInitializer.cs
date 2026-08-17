@@ -5,37 +5,73 @@ namespace KnustHallMaintenance.Data;
 
 public static class DbInitializer
 {
-    public static void Seed(
-        ApplicationDbContext context,
-        IPasswordHasher<ApplicationUser> hasher)
+    public static async Task SeedAsync(
+        UserManager<ApplicationUser> userManager)
     {
-        // ============================================================
-        // ADMIN
-        // ============================================================
+        var admin =
+            await userManager.FindByEmailAsync(
+                "admin@knust.edu.gh"
+            );
 
-        if (!context.Users.Any(u => u.Role == UserRole.Admin))
+        if (admin == null)
         {
-            var admin = new ApplicationUser
+            admin = new ApplicationUser
             {
-                FullName = "System Administrator",
+                UserName = "admin@knust.edu.gh",
                 Email = "admin@knust.edu.gh",
-                Role = UserRole.Admin
+                FullName = "System Administrator",
+                IsActive = true
             };
 
-            admin.PasswordHash =
-                hasher.HashPassword(
+            var result =
+                await userManager.CreateAsync(
                     admin,
                     "Admin123!"
                 );
 
-            context.Users.Add(admin);
+            if (!result.Succeeded)
+            {
+                var errors =
+                    string.Join(
+                        ", ",
+                        result.Errors.Select(
+                            e => e.Description
+                        )
+                    );
+
+                throw new InvalidOperationException(
+                    errors
+                );
+            }
         }
 
+        if (
+            !await userManager.IsInRoleAsync(
+                admin,
+                UserRole.Admin.ToString()
+            )
+        )
+        {
+            var result =
+                await userManager.AddToRoleAsync(
+                    admin,
+                    UserRole.Admin.ToString()
+                );
 
-        // ============================================================
-        // SAVE
-        // ============================================================
+            if (!result.Succeeded)
+            {
+                var errors =
+                    string.Join(
+                        ", ",
+                        result.Errors.Select(
+                            e => e.Description
+                        )
+                    );
 
-        context.SaveChanges();
+                throw new InvalidOperationException(
+                    errors
+                );
+            }
+        }
     }
 }

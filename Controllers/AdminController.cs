@@ -17,11 +17,6 @@ public class AdminController : Controller
         _userService = userService;
     }
 
-
-    // =========================================================
-    // AVAILABLE HALLS
-    // =========================================================
-
     private static readonly List<string> Halls =
         new()
         {
@@ -33,24 +28,59 @@ public class AdminController : Controller
             "University Hall"
         };
 
-
-    // =========================================================
-    // ADMIN DASHBOARD
-    // =========================================================
-
     [HttpGet]
     public async Task<IActionResult> Index()
     {
         var users =
             await _userService.GetAllAsync();
 
-        return View(users);
+        var model =
+            new List<AdminUserViewModel>();
+
+        foreach (var user in users)
+        {
+            var role =
+                UserRole.HallStaff;
+
+            if (
+                await _userService.IsInRoleAsync(
+                    user,
+                    UserRole.Admin
+                )
+            )
+            {
+                role = UserRole.Admin;
+            }
+            else if (
+                await _userService.IsInRoleAsync(
+                    user,
+                    UserRole.Maintenance
+                )
+            )
+            {
+                role = UserRole.Maintenance;
+            }
+            else if (
+                await _userService.IsInRoleAsync(
+                    user,
+                    UserRole.HallStaff
+                )
+            )
+            {
+                role = UserRole.HallStaff;
+            }
+
+            model.Add(
+                new AdminUserViewModel
+                {
+                    User = user,
+                    Role = role
+                }
+            );
+        }
+
+        return View(model);
     }
-
-
-    // =========================================================
-    // CREATE USER - GET
-    // =========================================================
 
     [HttpGet]
     public IActionResult CreateUser()
@@ -62,11 +92,6 @@ public class AdminController : Controller
         );
     }
 
-
-    // =========================================================
-    // CREATE USER - POST
-    // =========================================================
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> CreateUser(
@@ -74,19 +99,16 @@ public class AdminController : Controller
     {
         ViewBag.Halls = Halls;
 
-
         ValidateUserFields(
             model.Role,
             model.Hall,
             model.MaintenanceSpecialization
         );
 
-
         if (!ModelState.IsValid)
         {
             return View(model);
         }
-
 
         var existingUser =
             await _userService.GetByEmailAsync(
@@ -103,7 +125,6 @@ public class AdminController : Controller
             return View(model);
         }
 
-
         await _userService.CreateAsync(
             model.FullName.Trim(),
             model.Email.Trim(),
@@ -113,7 +134,6 @@ public class AdminController : Controller
             model.MaintenanceSpecialization
         );
 
-
         TempData["Success"] =
             $"{model.FullName}'s account was created successfully.";
 
@@ -121,11 +141,6 @@ public class AdminController : Controller
             nameof(Index)
         );
     }
-
-
-    // =========================================================
-    // EDIT USER - GET
-    // =========================================================
 
     [HttpGet]
     public async Task<IActionResult> EditUser(
@@ -139,30 +154,29 @@ public class AdminController : Controller
             return NotFound();
         }
 
-
         ViewBag.Halls = Halls;
 
+        var roles =
+            await GetUserRolesAsync(user);
 
-        var model = new AdminEditUserViewModel
-        {
-            Id = user.Id,
-            FullName = user.FullName,
-            Email = user.Email,
-            Role = user.Role,
-            Hall = user.Hall,
-            MaintenanceSpecialization =
-                user.MaintenanceSpecialization,
-            IsActive = user.IsActive
-        };
+        var role =
+            roles.FirstOrDefault();
 
+        var model =
+            new AdminEditUserViewModel
+            {
+                Id = user.Id,
+                FullName = user.FullName,
+                Email = user.Email?? string.Empty,
+                Role = ParseRole(role),
+                Hall = user.Hall,
+                MaintenanceSpecialization =
+                    user.MaintenanceSpecialization,
+                IsActive = user.IsActive
+            };
 
         return View(model);
     }
-
-
-    // =========================================================
-    // EDIT USER - POST
-    // =========================================================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -171,23 +185,24 @@ public class AdminController : Controller
     {
         ViewBag.Halls = Halls;
 
-
         var existingUser =
-            await _userService.GetByIdAsync(model.Id);
+            await _userService.GetByIdAsync(
+                model.Id
+            );
 
         if (existingUser == null)
         {
             return NotFound();
         }
 
-
-        // -----------------------------------------------------
-        // Prevent changing an Admin into another role.
-        // Prevent editing Admin role into something else.
-        // -----------------------------------------------------
+        var existingUserIsAdmin =
+            await _userService.IsInRoleAsync(
+                existingUser,
+                UserRole.Admin
+            );
 
         if (
-            existingUser.Role == UserRole.Admin &&
+            existingUserIsAdmin &&
             model.Role != UserRole.Admin
         )
         {
@@ -197,17 +212,11 @@ public class AdminController : Controller
             );
         }
 
-
         ValidateUserFields(
             model.Role,
             model.Hall,
             model.MaintenanceSpecialization
         );
-
-
-        // -----------------------------------------------------
-        // Duplicate email check
-        // -----------------------------------------------------
 
         var emailOwner =
             await _userService.GetByEmailAsync(
@@ -225,12 +234,10 @@ public class AdminController : Controller
             );
         }
 
-
         if (!ModelState.IsValid)
         {
             return View(model);
         }
-
 
         await _userService.UpdateAsync(
             model.Id,
@@ -242,7 +249,6 @@ public class AdminController : Controller
             model.IsActive
         );
 
-
         TempData["Success"] =
             $"{model.FullName}'s account was updated successfully.";
 
@@ -250,11 +256,6 @@ public class AdminController : Controller
             nameof(Index)
         );
     }
-
-
-    // =========================================================
-    // ACTIVATE / DEACTIVATE
-    // =========================================================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -269,8 +270,13 @@ public class AdminController : Controller
             return NotFound();
         }
 
+        var isAdmin =
+            await _userService.IsInRoleAsync(
+                user,
+                UserRole.Admin
+            );
 
-        if (user.Role == UserRole.Admin)
+        if (isAdmin)
         {
             TempData["Error"] =
                 "Administrator accounts cannot be deactivated.";
@@ -280,32 +286,23 @@ public class AdminController : Controller
             );
         }
 
-
         var newStatus =
             !user.IsActive;
-
 
         await _userService.SetActiveAsync(
             id,
             newStatus
         );
 
-
         TempData["Success"] =
             newStatus
                 ? $"{user.FullName} has been activated."
                 : $"{user.FullName} has been deactivated.";
 
-
         return RedirectToAction(
             nameof(Index)
         );
     }
-
-
-    // =========================================================
-    // DELETE USER
-    // =========================================================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -320,8 +317,13 @@ public class AdminController : Controller
             return NotFound();
         }
 
+        var isAdmin =
+            await _userService.IsInRoleAsync(
+                user,
+                UserRole.Admin
+            );
 
-        if (user.Role == UserRole.Admin)
+        if (isAdmin)
         {
             TempData["Error"] =
                 "Administrator accounts cannot be deleted.";
@@ -331,10 +333,8 @@ public class AdminController : Controller
             );
         }
 
-
         var deleted =
             await _userService.DeleteAsync(id);
-
 
         if (!deleted)
         {
@@ -347,26 +347,16 @@ public class AdminController : Controller
                 $"{user.FullName}'s account was deleted.";
         }
 
-
         return RedirectToAction(
             nameof(Index)
         );
     }
-
-
-    // =========================================================
-    // VALIDATION
-    // =========================================================
 
     private void ValidateUserFields(
         UserRole role,
         string? hall,
         MaintenanceSpecialization? specialization)
     {
-        // -----------------------------------------------------
-        // Hall Staff + Maintenance require a hall
-        // -----------------------------------------------------
-
         if (
             role == UserRole.HallStaff ||
             role == UserRole.Maintenance
@@ -388,11 +378,6 @@ public class AdminController : Controller
             }
         }
 
-
-        // -----------------------------------------------------
-        // Maintenance requires specialization
-        // -----------------------------------------------------
-
         if (role == UserRole.Maintenance)
         {
             if (!specialization.HasValue)
@@ -403,5 +388,52 @@ public class AdminController : Controller
                 );
             }
         }
+    }
+
+    private async Task<IList<string>> GetUserRolesAsync(
+        ApplicationUser user)
+    {
+        var roles =
+            new List<string>();
+
+        foreach (
+            var role in
+            new[]
+            {
+                UserRole.Admin,
+                UserRole.HallStaff,
+                UserRole.Maintenance
+            })
+        {
+            if (
+                await _userService.IsInRoleAsync(
+                    user,
+                    role
+                )
+            )
+            {
+                roles.Add(
+                    role.ToString()
+                );
+            }
+        }
+
+        return roles;
+    }
+
+    private static UserRole ParseRole(
+        string? role)
+    {
+        if (
+            Enum.TryParse<UserRole>(
+                role,
+                out var parsedRole
+            )
+        )
+        {
+            return parsedRole;
+        }
+
+        return UserRole.HallStaff;
     }
 }

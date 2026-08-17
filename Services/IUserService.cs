@@ -4,34 +4,16 @@ namespace KnustHallMaintenance.Services;
 
 public interface IUserService
 {
-    // ============================================================
-    // USER LOOKUPS
-    // ============================================================
-
     Task<ApplicationUser?> GetByEmailAsync(
         string email);
 
     Task<ApplicationUser?> GetByIdAsync(
         int id);
 
-
-    // ============================================================
-    // USER LISTING
-    // ============================================================
-
     Task<List<ApplicationUser>> GetAllAsync();
 
-
-    // ============================================================
-    // MAINTENANCE PERSONNEL
-    // ============================================================
-
-    Task<List<ApplicationUser>> GetMaintenanceStaffAsync(string hall);
-
-
-    // ============================================================
-    // CREATE USER
-    // ============================================================
+    Task<List<ApplicationUser>> GetMaintenanceStaffAsync(
+        string hall);
 
     Task<ApplicationUser> CreateAsync(
         string fullName,
@@ -40,11 +22,6 @@ public interface IUserService
         UserRole role,
         string? hall,
         MaintenanceSpecialization? maintenanceSpecialization);
-
-
-    // ============================================================
-    // UPDATE USER
-    // ============================================================
 
     Task<bool> UpdateAsync(
         int id,
@@ -55,29 +32,14 @@ public interface IUserService
         MaintenanceSpecialization? maintenanceSpecialization,
         bool isActive);
 
-
-    // ============================================================
-    // ACTIVATE / DEACTIVATE
-    // ============================================================
-
     Task<bool> SetActiveAsync(
         int id,
         bool isActive);
 
-
-    // ============================================================
-    // DELETE USER
-    // ============================================================
-
     Task<bool> DeleteAsync(
         int id);
 
-
-    // ============================================================
-    // PASSWORD VERIFICATION
-    // ============================================================
-
-    bool VerifyPassword(
+    Task<bool> IsInRoleAsync(
         ApplicationUser user,
-        string password);
+        UserRole role);
 }

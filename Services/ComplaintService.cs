@@ -17,11 +17,6 @@ public class ComplaintService : IComplaintService
         _userService = userService;
     }
 
-
-    // =========================================================
-    // CREATE COMPLAINT
-    // =========================================================
-
     public async Task<Complaint> CreateAsync(
         Complaint complaint)
     {
@@ -31,22 +26,15 @@ public class ComplaintService : IComplaintService
         complaint.DateCreated =
             DateTime.Now;
 
-        _context.Complaints.Add(
-            complaint
-        );
+        _context.Complaints.Add(complaint);
 
         await _context.SaveChangesAsync();
 
         return complaint;
     }
 
-
-    // =========================================================
-    // GET STUDENT COMPLAINTS
-    // =========================================================
-
-    public async Task<List<Complaint>> GetForStudentAsync(
-        int studentId)
+    public async Task<List<Complaint>>
+        GetForStudentAsync(int studentId)
     {
         return await _context.Complaints
             .Where(
@@ -58,42 +46,30 @@ public class ComplaintService : IComplaintService
             .ToListAsync();
     }
 
-
-    // =========================================================
-    // GET ALL COMPLAINTS
-    // =========================================================
-
-    public async Task<List<Complaint>> GetAllAsync(
-        ComplaintStatus? statusFilter = null,
-        ComplaintCategory? categoryFilter = null)
+    public async Task<List<Complaint>>
+        GetAllAsync(
+            ComplaintStatus? statusFilter = null,
+            ComplaintCategory? categoryFilter = null)
     {
         var query =
             _context.Complaints
-
                 .Include(c => c.Student)
-
                 .Include(c => c.AssignedTo)
-
                 .AsQueryable();
-
 
         if (statusFilter.HasValue)
         {
-            query =
-                query.Where(
-                    c => c.Status == statusFilter.Value
-                );
+            query = query.Where(
+                c => c.Status == statusFilter.Value
+            );
         }
-
 
         if (categoryFilter.HasValue)
         {
-            query =
-                query.Where(
-                    c => c.Category == categoryFilter.Value
-                );
+            query = query.Where(
+                c => c.Category == categoryFilter.Value
+            );
         }
-
 
         return await query
             .OrderByDescending(
@@ -102,47 +78,32 @@ public class ComplaintService : IComplaintService
             .ToListAsync();
     }
 
-
-    // =========================================================
-    // GET COMPLAINTS FOR A HALL
-    // =========================================================
-
-    public async Task<List<Complaint>> GetForHallAsync(
-        string hall,
-        ComplaintStatus? statusFilter = null,
-        ComplaintCategory? categoryFilter = null)
+    public async Task<List<Complaint>>
+        GetForHallAsync(
+            string hall,
+            ComplaintStatus? statusFilter = null,
+            ComplaintCategory? categoryFilter = null)
     {
         var query =
             _context.Complaints
-
                 .Include(c => c.Student)
-
                 .Include(c => c.AssignedTo)
-
-                .Where(
-                    c => c.Hall == hall
-                )
-
+                .Where(c => c.Hall == hall)
                 .AsQueryable();
-
 
         if (statusFilter.HasValue)
         {
-            query =
-                query.Where(
-                    c => c.Status == statusFilter.Value
-                );
+            query = query.Where(
+                c => c.Status == statusFilter.Value
+            );
         }
-
 
         if (categoryFilter.HasValue)
         {
-            query =
-                query.Where(
-                    c => c.Category == categoryFilter.Value
-                );
+            query = query.Where(
+                c => c.Category == categoryFilter.Value
+            );
         }
-
 
         return await query
             .OrderByDescending(
@@ -151,47 +112,34 @@ public class ComplaintService : IComplaintService
             .ToListAsync();
     }
 
-
-    // =========================================================
-    // GET MAINTENANCE WORK ORDERS
-    // =========================================================
-
-    public async Task<List<Complaint>> GetAssignedToAsync(
-        int maintenanceId,
-        ComplaintStatus? statusFilter = null,
-        ComplaintCategory? categoryFilter = null)
+    public async Task<List<Complaint>>
+        GetAssignedToAsync(
+            int maintenanceId,
+            ComplaintStatus? statusFilter = null,
+            ComplaintCategory? categoryFilter = null)
     {
         var query =
             _context.Complaints
-
                 .Include(c => c.Student)
-
                 .Include(c => c.AssignedTo)
-
                 .Where(
                     c => c.AssignedToId == maintenanceId
                 )
-
                 .AsQueryable();
-
 
         if (statusFilter.HasValue)
         {
-            query =
-                query.Where(
-                    c => c.Status == statusFilter.Value
-                );
+            query = query.Where(
+                c => c.Status == statusFilter.Value
+            );
         }
-
 
         if (categoryFilter.HasValue)
         {
-            query =
-                query.Where(
-                    c => c.Category == categoryFilter.Value
-                );
+            query = query.Where(
+                c => c.Category == categoryFilter.Value
+            );
         }
-
 
         return await query
             .OrderByDescending(
@@ -199,58 +147,21 @@ public class ComplaintService : IComplaintService
             )
             .ToListAsync();
     }
-
-
-    // =========================================================
-    // GET COMPLAINT BY ID
-    // =========================================================
 
     public async Task<Complaint?> GetByIdAsync(
         int id)
     {
         return await _context.Complaints
-
             .Include(c => c.Student)
-
             .Include(c => c.AssignedTo)
-
             .Include(c => c.Updates)
                 .ThenInclude(
                     u => u.UpdatedBy
                 )
-
             .FirstOrDefaultAsync(
                 c => c.Id == id
             );
     }
-
-
-    // =========================================================
-    // ASSIGN COMPLAINT
-    // =========================================================
-    //
-    // Hall Staff can only assign a complaint to a Maintenance
-    // person belonging to the SAME hall.
-    //
-    // IMPORTANT:
-    //
-    // If the complaint is Submitted:
-    //
-    //     Submitted
-    //          ↓
-    //     Assigned
-    //
-    // If the complaint is already InProgress:
-    //
-    //     InProgress
-    //          ↓
-    //     reassigned
-    //          ↓
-    //     InProgress
-    //
-    // We preserve progress when a new technician takes over.
-    //
-    // =========================================================
 
     public async Task<bool> AssignAsync(
         int complaintId,
@@ -263,38 +174,31 @@ public class ComplaintService : IComplaintService
                     c => c.Id == complaintId
                 );
 
-
         if (complaint == null)
         {
             return false;
         }
-
-
-        // =====================================================
-        // GET HALL STAFF
-        // =====================================================
 
         var staff =
             await _userService.GetByIdAsync(
                 staffId
             );
 
-
         if (staff == null)
         {
             return false;
         }
 
+        var isHallStaff =
+            await _userService.IsInRoleAsync(
+                staff,
+                UserRole.HallStaff
+            );
 
-        // Must actually be Hall Staff.
-
-        if (staff.Role != UserRole.HallStaff)
+        if (!isHallStaff)
         {
             return false;
         }
-
-
-        // Hall Staff must have a hall.
 
         if (
             string.IsNullOrWhiteSpace(
@@ -304,11 +208,6 @@ public class ComplaintService : IComplaintService
         {
             return false;
         }
-
-
-        // =====================================================
-        // VERIFY STAFF OWNS THE COMPLAINT'S HALL
-        // =====================================================
 
         if (
             !string.Equals(
@@ -321,34 +220,26 @@ public class ComplaintService : IComplaintService
             return false;
         }
 
-
-        // =====================================================
-        // GET TECHNICIAN
-        // =====================================================
-
         var assignee =
             await _userService.GetByIdAsync(
                 assignToId
             );
-
 
         if (assignee == null)
         {
             return false;
         }
 
+        var isMaintenance =
+            await _userService.IsInRoleAsync(
+                assignee,
+                UserRole.Maintenance
+            );
 
-        // Must be Maintenance personnel.
-
-        if (
-            assignee.Role != UserRole.Maintenance
-        )
+        if (!isMaintenance)
         {
             return false;
         }
-
-
-        // Technician must have a hall.
 
         if (
             string.IsNullOrWhiteSpace(
@@ -358,11 +249,6 @@ public class ComplaintService : IComplaintService
         {
             return false;
         }
-
-
-        // =====================================================
-        // VERIFY TECHNICIAN BELONGS TO SAME HALL
-        // =====================================================
 
         if (
             !string.Equals(
@@ -375,32 +261,8 @@ public class ComplaintService : IComplaintService
             return false;
         }
 
-
-        // =====================================================
-        // ASSIGN
-        // =====================================================
-
         complaint.AssignedToId =
             assignToId;
-
-
-        // =====================================================
-        // PRESERVE EXISTING PROGRESS
-        // =====================================================
-        //
-        // Only Submitted complaints become Assigned.
-        //
-        // If the complaint is already:
-        //
-        //     InProgress
-        //
-        // it stays:
-        //
-        //     InProgress
-        //
-        // This is important after a technician is transferred
-        // between halls.
-        // =====================================================
 
         if (
             complaint.Status ==
@@ -410,11 +272,6 @@ public class ComplaintService : IComplaintService
             complaint.Status =
                 ComplaintStatus.Assigned;
         }
-
-
-        // =====================================================
-        // ADD AUDIT UPDATE
-        // =====================================================
 
         _context.ComplaintUpdates.Add(
             new ComplaintUpdate
@@ -433,16 +290,10 @@ public class ComplaintService : IComplaintService
             }
         );
 
-
         await _context.SaveChangesAsync();
 
         return true;
     }
-
-
-    // =========================================================
-    // UPDATE STATUS
-    // =========================================================
 
     public async Task<bool> UpdateStatusAsync(
         int complaintId,
@@ -454,7 +305,6 @@ public class ComplaintService : IComplaintService
             await _context.Complaints
                 .FindAsync(complaintId);
 
-
         if (
             complaint == null ||
             complaint.AssignedToId != updatedById
@@ -463,10 +313,8 @@ public class ComplaintService : IComplaintService
             return false;
         }
 
-
         complaint.Status =
             status;
-
 
         if (
             status ==
@@ -481,7 +329,6 @@ public class ComplaintService : IComplaintService
             complaint.DateResolved =
                 null;
         }
-
 
         _context.ComplaintUpdates.Add(
             new ComplaintUpdate
@@ -501,7 +348,6 @@ public class ComplaintService : IComplaintService
                     DateTime.Now
             }
         );
-
 
         await _context.SaveChangesAsync();
 
