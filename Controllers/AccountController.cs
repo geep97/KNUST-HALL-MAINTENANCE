@@ -1,27 +1,24 @@
-using System.Security.Claims;
 using KnustHallMaintenance.Models;
 using KnustHallMaintenance.Models.ViewModels;
 using KnustHallMaintenance.Services;
 using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace KnustHallMaintenance.Controllers;
 
 public class AccountController : Controller
 {
-    private readonly IUserService _userService;
     private readonly IStudentService _studentService;
     private readonly SignInManager<ApplicationUser> _signInManager;
     private readonly UserManager<ApplicationUser> _userManager;
 
     public AccountController(
-        IUserService userService,
         IStudentService studentService,
         SignInManager<ApplicationUser> signInManager,
         UserManager<ApplicationUser> userManager)
     {
-        _userService = userService;
         _studentService = studentService;
         _signInManager = signInManager;
         _userManager = userManager;
@@ -43,11 +40,7 @@ public class AccountController : Controller
             return View(model);
         }
 
-        if (
-            LooksLikeStudentId(
-                model.EmailOrStudentId
-            )
-        )
+        if (LooksLikeStudentId(model.EmailOrStudentId))
         {
             var student =
                 await _studentService
@@ -72,42 +65,42 @@ public class AccountController : Controller
             var studentClaims =
                 new List<Claim>
                 {
-                    new Claim(
+                    new(
                         ClaimTypes.NameIdentifier,
                         student.Id.ToString()
                     ),
 
-                    new Claim(
+                    new(
                         ClaimTypes.Name,
                         student.FullName
                     ),
 
-                    new Claim(
+                    new(
                         ClaimTypes.Email,
                         student.Email
                     ),
 
-                    new Claim(
+                    new(
                         ClaimTypes.Role,
                         "Student"
                     ),
 
-                    new Claim(
+                    new(
                         "StudentId",
                         student.StudentId
                     ),
 
-                    new Claim(
+                    new(
                         "Hall",
                         student.Hall
                     ),
 
-                    new Claim(
+                    new(
                         "RoomNumber",
                         student.RoomNumber
                     ),
 
-                    new Claim(
+                    new(
                         "Programme",
                         student.Programme
                     )
@@ -136,8 +129,8 @@ public class AccountController : Controller
         }
 
         var user =
-            await _userService
-                .GetByEmailAsync(
+            await _userManager
+                .FindByEmailAsync(
                     model.EmailOrStudentId.Trim()
                 );
 
@@ -160,7 +153,7 @@ public class AccountController : Controller
         var result =
             await _signInManager
                 .PasswordSignInAsync(
-                    user.UserName!,
+                    user,
                     model.Password,
                     isPersistent: false,
                     lockoutOnFailure: false
@@ -207,14 +200,6 @@ public class AccountController : Controller
     private IActionResult RedirectAfterLogin(
         string? role)
     {
-        if (role == "Student")
-        {
-            return RedirectToAction(
-                "MyComplaints",
-                "Complaints"
-            );
-        }
-
         if (
             role ==
             UserRole.HallStaff.ToString()

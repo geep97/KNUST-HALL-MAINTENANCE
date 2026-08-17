@@ -21,15 +21,15 @@ public class UserService : IUserService
     public async Task<ApplicationUser?> GetByEmailAsync(
         string email)
     {
-        return await _userManager.FindByEmailAsync(email);
+        return await _userManager.FindByEmailAsync(
+            email.Trim());
     }
 
     public async Task<ApplicationUser?> GetByIdAsync(
         int id)
     {
         return await _userManager.FindByIdAsync(
-            id.ToString()
-        );
+            id.ToString());
     }
 
     public async Task<List<ApplicationUser>> GetAllAsync()
@@ -40,37 +40,28 @@ public class UserService : IUserService
             .ToListAsync();
     }
 
-    public async Task<List<ApplicationUser>>
-        GetMaintenanceStaffAsync(string hall)
+    public async Task<List<ApplicationUser>> GetMaintenanceStaffAsync(
+        string hall)
     {
         if (string.IsNullOrWhiteSpace(hall))
         {
             return new List<ApplicationUser>();
         }
 
-        var users = await _context.Users
+        var maintenanceRoleId =
+            (int)UserRole.Maintenance;
+
+        return await _context.Users
             .Where(u =>
                 u.IsActive &&
                 u.Hall == hall &&
-                u.MaintenanceSpecialization != null)
+                u.MaintenanceSpecialization != null &&
+                _context.UserRoles.Any(ur =>
+                    ur.UserId == u.Id &&
+                    ur.RoleId == maintenanceRoleId))
             .OrderBy(u => u.MaintenanceSpecialization)
             .ThenBy(u => u.FullName)
             .ToListAsync();
-
-        var maintenanceStaff =
-            new List<ApplicationUser>();
-
-        foreach (var user in users)
-        {
-            if (await _userManager.IsInRoleAsync(
-                user,
-                UserRole.Maintenance.ToString()))
-            {
-                maintenanceStaff.Add(user);
-            }
-        }
-
-        return maintenanceStaff;
     }
 
     public async Task<ApplicationUser> CreateAsync(
@@ -83,9 +74,9 @@ public class UserService : IUserService
     {
         var user = new ApplicationUser
         {
-            UserName = email,
-            Email = email,
-            FullName = fullName,
+            UserName = email.Trim(),
+            Email = email.Trim(),
+            FullName = fullName.Trim(),
             Hall = hall,
             IsActive = true,
             MaintenanceSpecialization =
@@ -94,17 +85,17 @@ public class UserService : IUserService
                     : null
         };
 
-        var result = await _userManager.CreateAsync(
-            user,
-            password
-        );
+        var result =
+            await _userManager.CreateAsync(
+                user,
+                password);
 
         if (!result.Succeeded)
         {
             var errors = string.Join(
                 ", ",
-                result.Errors.Select(e => e.Description)
-            );
+                result.Errors.Select(
+                    e => e.Description));
 
             throw new InvalidOperationException(errors);
         }
@@ -112,8 +103,7 @@ public class UserService : IUserService
         var roleResult =
             await _userManager.AddToRoleAsync(
                 user,
-                role.ToString()
-            );
+                role.ToString());
 
         if (!roleResult.Succeeded)
         {
@@ -121,8 +111,8 @@ public class UserService : IUserService
 
             var errors = string.Join(
                 ", ",
-                roleResult.Errors.Select(e => e.Description)
-            );
+                roleResult.Errors.Select(
+                    e => e.Description));
 
             throw new InvalidOperationException(errors);
         }
@@ -141,8 +131,7 @@ public class UserService : IUserService
     {
         var user =
             await _userManager.FindByIdAsync(
-                id.ToString()
-            );
+                id.ToString());
 
         if (user == null)
         {
@@ -159,13 +148,11 @@ public class UserService : IUserService
             !string.Equals(
                 user.Hall,
                 hall,
-                StringComparison.OrdinalIgnoreCase
-            );
+                StringComparison.OrdinalIgnoreCase);
 
         if (
             hallChanged &&
-            currentRole == UserRole.Maintenance.ToString()
-        )
+            currentRole == UserRole.Maintenance.ToString())
         {
             var assignedComplaints =
                 await _context.Complaints
@@ -180,11 +167,20 @@ public class UserService : IUserService
             }
         }
 
-        user.FullName = fullName;
-        user.Email = email;
-        user.UserName = email;
-        user.Hall = hall;
-        user.IsActive = isActive;
+        user.FullName =
+            fullName.Trim();
+
+        user.Email =
+            email.Trim();
+
+        user.UserName =
+            email.Trim();
+
+        user.Hall =
+            hall;
+
+        user.IsActive =
+            isActive;
 
         user.MaintenanceSpecialization =
             role == UserRole.Maintenance
@@ -204,8 +200,7 @@ public class UserService : IUserService
             var removeResult =
                 await _userManager.RemoveFromRolesAsync(
                     user,
-                    currentRoles
-                );
+                    currentRoles);
 
             if (!removeResult.Succeeded)
             {
@@ -216,8 +211,7 @@ public class UserService : IUserService
         var addRoleResult =
             await _userManager.AddToRoleAsync(
                 user,
-                role.ToString()
-            );
+                role.ToString());
 
         if (!addRoleResult.Succeeded)
         {
@@ -235,15 +229,15 @@ public class UserService : IUserService
     {
         var user =
             await _userManager.FindByIdAsync(
-                id.ToString()
-            );
+                id.ToString());
 
         if (user == null)
         {
             return false;
         }
 
-        user.IsActive = isActive;
+        user.IsActive =
+            isActive;
 
         var result =
             await _userManager.UpdateAsync(user);
@@ -256,8 +250,7 @@ public class UserService : IUserService
     {
         var user =
             await _userManager.FindByIdAsync(
-                id.ToString()
-            );
+                id.ToString());
 
         if (user == null)
         {
@@ -267,8 +260,9 @@ public class UserService : IUserService
         var roles =
             await _userManager.GetRolesAsync(user);
 
-        if (roles.Contains(
-            UserRole.Admin.ToString()))
+        if (
+            roles.Contains(
+                UserRole.Admin.ToString()))
         {
             return false;
         }
@@ -276,8 +270,7 @@ public class UserService : IUserService
         var hasAssignedComplaints =
             await _context.Complaints
                 .AnyAsync(
-                    c => c.AssignedToId == id
-                );
+                    c => c.AssignedToId == id);
 
         if (hasAssignedComplaints)
         {
@@ -287,8 +280,7 @@ public class UserService : IUserService
         var hasComplaintUpdates =
             await _context.ComplaintUpdates
                 .AnyAsync(
-                    u => u.UpdatedById == id
-                );
+                    u => u.UpdatedById == id);
 
         if (hasComplaintUpdates)
         {
@@ -307,7 +299,6 @@ public class UserService : IUserService
     {
         return await _userManager.IsInRoleAsync(
             user,
-            role.ToString()
-        );
+            role.ToString());
     }
 }

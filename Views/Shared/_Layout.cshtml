@@ -4,6 +4,8 @@
 @{
     var role = User.FindFirstValue(ClaimTypes.Role);
 
+    var hall = User.FindFirstValue("Hall");
+
     var currentController =
         ViewContext.RouteData.Values["controller"]?.ToString();
 
@@ -60,6 +62,7 @@
     </div>
 
 
+
     <!-- =========================================================
          BRANDING HEADER
          ========================================================= -->
@@ -95,9 +98,11 @@
     </header>
 
 
+
     <!-- =========================================================
          NAVIGATION
          ========================================================= -->
+
     @if (User.Identity?.IsAuthenticated == true)
     {
 
@@ -121,6 +126,7 @@
                 </button>
 
 
+
                 <div class="collapse navbar-collapse"
                      id="portalNavigation">
 
@@ -128,6 +134,7 @@
                     <!-- =================================================
                          ADMIN NAVIGATION
                          ================================================= -->
+
                     @if (role == nameof(UserRole.Admin))
                     {
 
@@ -150,9 +157,11 @@
                     }
 
 
+
                     <!-- =================================================
                          HALL STAFF NAVIGATION
                          ================================================= -->
+
                     @if (role == nameof(UserRole.HallStaff))
                     {
 
@@ -164,7 +173,7 @@
                                    asp-controller="Staff"
                                    asp-action="Index">
 
-                                    Maintenance Requests
+                                    @hall · Maintenance Requests
 
                                 </a>
 
@@ -175,9 +184,11 @@
                     }
 
 
+
                     <!-- =================================================
                          MAINTENANCE PERSONNEL NAVIGATION
                          ================================================= -->
+
                     @if (role == nameof(UserRole.Maintenance))
                     {
 
@@ -189,7 +200,7 @@
                                    asp-controller="Staff"
                                    asp-action="Index">
 
-                                    My Work Orders
+                                    @hall · My Work Orders
 
                                 </a>
 
@@ -200,9 +211,11 @@
                     }
 
 
+
                     <!-- =================================================
                          STUDENT NAVIGATION
                          ================================================= -->
+
                     @if (role == "Student")
                     {
 
@@ -225,6 +238,7 @@
                     }
 
 
+
                     <!-- =================================================
                          USER INFORMATION
                          ================================================= -->
@@ -235,11 +249,32 @@
 
                             @User.Identity?.Name
 
+
+                            @if (
+                                (role == nameof(UserRole.HallStaff) ||
+                                 role == nameof(UserRole.Maintenance))
+                                &&
+                                !string.IsNullOrWhiteSpace(hall)
+                            )
+                            {
+
+                                <span class="opacity-75">
+
+                                    · @hall
+
+                                </span>
+
+                            }
+
+
                             <span class="opacity-75">
+
                                 · @role
+
                             </span>
 
                         </span>
+
 
 
                         <!-- LOGOUT -->
@@ -262,6 +297,7 @@
 
                     </div>
 
+
                 </div>
 
             </div>
@@ -269,6 +305,7 @@
         </nav>
 
     }
+
 
 
     <!-- =========================================================
@@ -281,6 +318,7 @@
 
 
             <!-- SUCCESS MESSAGE -->
+
             @if (TempData["Success"] != null)
             {
 
@@ -293,7 +331,9 @@
             }
 
 
+
             <!-- ERROR MESSAGE -->
+
             @if (TempData["Error"] != null)
             {
 
@@ -306,11 +346,13 @@
             }
 
 
+
             @RenderBody()
 
         </div>
 
     </main>
+
 
 
     <!-- =========================================================
@@ -322,16 +364,21 @@
         <div class="container d-flex justify-content-between flex-wrap gap-2">
 
             <span>
+
                 KNUST Hall Maintenance Portal
+
             </span>
 
             <span>
+
                 Facilities &amp; Maintenance Operations
+
             </span>
 
         </div>
 
     </footer>
+
 
 
     <!-- =========================================================
@@ -343,6 +390,7 @@
 
 
     @await RenderSectionAsync("Scripts", required: false)
+
 
 </body>
 

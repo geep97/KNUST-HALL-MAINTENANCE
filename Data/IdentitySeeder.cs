@@ -5,47 +5,88 @@ namespace KnustHallMaintenance.Data;
 
 public static class IdentitySeeder
 {
-    public static async Task SeedRolesAsync(
-        RoleManager<IdentityRole<int>> roleManager)
+    public static async Task SeedAsync(
+        RoleManager<IdentityRole<int>> roleManager,
+        UserManager<ApplicationUser> userManager)
     {
-        var roles =
-            new[]
-            {
-                new IdentityRole<int>
-                {
-                    Id = (int)UserRole.HallStaff,
-                    Name = UserRole.HallStaff.ToString(),
-                    NormalizedName =
-                        UserRole.HallStaff.ToString().ToUpperInvariant()
-                },
-
-                new IdentityRole<int>
-                {
-                    Id = (int)UserRole.Maintenance,
-                    Name = UserRole.Maintenance.ToString(),
-                    NormalizedName =
-                        UserRole.Maintenance.ToString().ToUpperInvariant()
-                },
-
-                new IdentityRole<int>
-                {
-                    Id = (int)UserRole.Admin,
-                    Name = UserRole.Admin.ToString(),
-                    NormalizedName =
-                        UserRole.Admin.ToString().ToUpperInvariant()
-                }
-            };
+        var roles = new[]
+        {
+            UserRole.HallStaff.ToString(),
+            UserRole.Maintenance.ToString(),
+            UserRole.Admin.ToString()
+        };
 
         foreach (var role in roles)
         {
-            var existingRole =
-                await roleManager.FindByIdAsync(
-                    role.Id.ToString()
+            if (!await roleManager.RoleExistsAsync(role))
+            {
+                await roleManager.CreateAsync(
+                    new IdentityRole<int>(role)
+                );
+            }
+        }
+
+        var admin =
+            await userManager.FindByEmailAsync(
+                "admin@knust.edu.gh"
+            );
+
+        if (admin == null)
+        {
+            admin = new ApplicationUser
+            {
+                UserName = "admin@knust.edu.gh",
+                Email = "admin@knust.edu.gh",
+                FullName = "System Administrator",
+                IsActive = true
+            };
+
+            var result =
+                await userManager.CreateAsync(
+                    admin,
+                    "Admin123!"
                 );
 
-            if (existingRole == null)
+            if (!result.Succeeded)
             {
-                await roleManager.CreateAsync(role);
+                var errors = string.Join(
+                    ", ",
+                    result.Errors.Select(
+                        e => e.Description
+                    )
+                );
+
+                throw new InvalidOperationException(
+                    errors
+                );
+            }
+        }
+
+        if (
+            !await userManager.IsInRoleAsync(
+                admin,
+                UserRole.Admin.ToString()
+            )
+        )
+        {
+            var result =
+                await userManager.AddToRoleAsync(
+                    admin,
+                    UserRole.Admin.ToString()
+                );
+
+            if (!result.Succeeded)
+            {
+                var errors = string.Join(
+                    ", ",
+                    result.Errors.Select(
+                        e => e.Description
+                    )
+                );
+
+                throw new InvalidOperationException(
+                    errors
+                );
             }
         }
     }

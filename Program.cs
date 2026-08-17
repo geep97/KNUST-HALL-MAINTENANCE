@@ -51,10 +51,12 @@ builder.Services.AddScoped<
 >();
 
 builder.Services.AddScoped<IComplaintService, ComplaintService>();
-
 builder.Services.AddScoped<IUserService, UserService>();
-
 builder.Services.AddScoped<IStudentService, StudentService>();
+
+builder.Services.AddScoped<
+    IUserClaimsPrincipalFactory<ApplicationUser>,
+    ApplicationUserClaimsPrincipalFactory>();
 
 builder.Services.AddAuthorization();
 
@@ -67,13 +69,9 @@ if (!app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseStaticFiles();
-
 app.UseRouting();
-
 app.UseAuthentication();
-
 app.UseAuthorization();
 
 app.MapControllerRoute(
@@ -85,26 +83,23 @@ using (var scope = app.Services.CreateScope())
 {
     var services = scope.ServiceProvider;
 
-    var db =
-        services.GetRequiredService<ApplicationDbContext>();
-
     var roleManager =
         services.GetRequiredService<
             RoleManager<IdentityRole<int>>
         >();
-
-    await IdentitySeeder.SeedRolesAsync(
-        roleManager
-    );
 
     var userManager =
         services.GetRequiredService<
             UserManager<ApplicationUser>
         >();
 
-    await DbInitializer.SeedAsync(
+    await IdentitySeeder.SeedAsync(
+        roleManager,
         userManager
     );
+
+    var db =
+        services.GetRequiredService<ApplicationDbContext>();
 
     var studentHasher =
         services.GetRequiredService<
