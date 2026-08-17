@@ -41,6 +41,18 @@ public class ApplicationDbContext
             .IsUnique();
 
         modelBuilder.Entity<Complaint>()
+            .HasIndex(c => c.StudentId);
+
+        modelBuilder.Entity<Complaint>()
+            .HasIndex(c => c.AssignedToId);
+
+        modelBuilder.Entity<Complaint>()
+            .HasIndex(c => c.Hall);
+
+        modelBuilder.Entity<ComplaintUpdate>()
+            .HasIndex(u => u.ComplaintId);
+
+        modelBuilder.Entity<Complaint>()
             .HasOne(c => c.Student)
             .WithMany()
             .HasForeignKey(c => c.StudentId)

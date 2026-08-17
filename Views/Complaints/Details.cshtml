@@ -1,63 +1,251 @@
 @model Complaint
+
 @{
     ViewData["Title"] = $"Request #{Model.Id}";
+
+    bool awaitingConfirmation =
+        Model.Status == ComplaintStatus.Resolved &&
+        Model.ResolutionConfirmed != true;
 }
 
 <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-3">
     <div class="work-order-header">
         <div class="eyebrow">My Maintenance Request</div>
-        <h2 class="mb-1">#@Model.Id · @Model.Category</h2>
-        <p>@Model.Hall · Room @Model.RoomNumber</p>
+
+        <h2 class="mb-1">
+            #@Model.Id · @Model.Category
+        </h2>
+
+        <p>
+            @Model.Hall · Room @Model.RoomNumber
+        </p>
     </div>
-    <span class="status-badge @StatusBadgeHelper.CssClass(Model.Status)">@StatusBadgeHelper.Display(Model.Status)</span>
+
+    <div class="d-flex flex-column align-items-end gap-2">
+
+        <span class="status-badge @StatusBadgeHelper.CssClass(Model.Status)">
+            @StatusBadgeHelper.Display(Model.Status)
+        </span>
+
+        @if (Model.ResolutionConfirmed == true)
+        {
+            <span class="status-badge badge-resolved">
+                Resolution Confirmed
+            </span>
+        }
+
+    </div>
 </div>
 
+
+
 <div class="row g-4">
+
     <div class="col-lg-7">
+
         <div class="card-soft p-4">
-            <div class="section-title mb-4">Request details</div>
-            <div class="detail-label">Description</div>
-            <div class="detail-value">@Model.Description</div>
+
+            <div class="section-title mb-4">
+                Request details
+            </div>
+
+            <div class="detail-label">
+                Description
+            </div>
+
+            <div class="detail-value">
+                @Model.Description
+            </div>
 
             @if (!string.IsNullOrEmpty(Model.PhotoPath))
             {
-                <div class="detail-label">Attached photo</div>
-                <img src="@Model.PhotoPath" class="img-fluid rounded border mb-2" style="max-height:340px;" alt="Maintenance issue photo" />
+                <div class="detail-label">
+                    Attached photo
+                </div>
+
+                <img src="@Model.PhotoPath"
+                     class="img-fluid rounded border mb-2"
+                     style="max-height:340px;"
+                     alt="Maintenance issue photo" />
             }
 
             <div class="row mt-3">
+
                 <div class="col-sm-6">
-                    <div class="detail-label">Reported</div>
-                    <div class="detail-value mb-0">@Model.DateCreated.ToString("dd MMM yyyy, h:mm tt")</div>
+
+                    <div class="detail-label">
+                        Reported
+                    </div>
+
+                    <div class="detail-value mb-0">
+                        @Model.DateCreated.ToString("dd MMM yyyy, h:mm tt")
+                    </div>
+
                 </div>
+
                 <div class="col-sm-6">
-                    <div class="detail-label">Assigned technician</div>
-                    <div class="detail-value mb-0">@(Model.AssignedTo?.FullName ?? "Awaiting assignment")</div>
+
+                    <div class="detail-label">
+                        Assigned technician
+                    </div>
+
+                    <div class="detail-value mb-0">
+                        @(Model.AssignedTo?.FullName ?? "Awaiting assignment")
+                    </div>
+
                 </div>
+
             </div>
+
         </div>
+
+        @if (awaitingConfirmation)
+        {
+            <div class="card-soft p-4 mt-4">
+
+                <div class="section-title mb-2">
+                    Has your issue been fixed?
+                </div>
+
+                <p class="text-muted">
+                    The maintenance team has marked this request as resolved.
+                    Please confirm whether the issue has actually been fixed.
+                </p>
+
+                <div class="d-flex gap-2 flex-wrap">
+
+                    <form asp-action="ConfirmResolution"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="complaintId"
+                               value="@Model.Id" />
+
+                        <input type="hidden"
+                               name="confirmed"
+                               value="true" />
+
+                        <button type="submit"
+                                class="btn btn-knust">
+                            Yes, it's fixed
+                        </button>
+
+                    </form>
+
+                    <button type="button"
+                            class="btn btn-outline-danger"
+                            data-bs-toggle="collapse"
+                            data-bs-target="#notFixedForm">
+                        No, it's not fixed
+                    </button>
+
+                </div>
+
+                <div class="collapse mt-3"
+                     id="notFixedForm">
+
+                    <form asp-action="ConfirmResolution"
+                          method="post">
+
+                        @Html.AntiForgeryToken()
+
+                        <input type="hidden"
+                               name="complaintId"
+                               value="@Model.Id" />
+
+                        <input type="hidden"
+                               name="confirmed"
+                               value="false" />
+
+                        <label class="form-label">
+                            What still needs to be fixed?
+                        </label>
+
+                        <textarea name="note"
+                                  class="form-control mb-3"
+                                  rows="3"
+                                  placeholder="Describe what is still wrong..."></textarea>
+
+                        <button type="submit"
+                                class="btn btn-danger">
+                            Report Issue Still Not Fixed
+                        </button>
+
+                    </form>
+
+                </div>
+
+            </div>
+        }
+
+        @if (Model.ResolutionConfirmed == true)
+        {
+            <div class="card-soft p-4 mt-4">
+
+                <div class="section-title mb-2">
+                    Resolution confirmed
+                </div>
+
+                <p class="text-muted mb-0">
+                    You confirmed that this maintenance issue has been fixed.
+                </p>
+
+                @if (Model.ResolutionConfirmedAt.HasValue)
+                {
+                    <div class="small text-muted mt-2">
+                        Confirmed on
+                        @Model.ResolutionConfirmedAt.Value.ToString("dd MMM yyyy, h:mm tt")
+                    </div>
+                }
+
+            </div>
+        }
+
     </div>
 
     <div class="col-lg-5">
+
         <div class="card-soft p-4">
-            <div class="section-title mb-4">Request activity</div>
+
+            <div class="section-title mb-4">
+                Request activity
+            </div>
+
             @if (!Model.Updates.Any())
             {
-                <p class="text-muted mb-0">Your request has been submitted and is awaiting review.</p>
+                <p class="text-muted mb-0">
+                    Your request has been submitted and is awaiting review.
+                </p>
             }
             else
             {
                 foreach (var u in Model.Updates.OrderByDescending(x => x.Timestamp))
                 {
                     <div class="timeline-item">
+
                         <span class="timeline-dot"></span>
-                        <div class="fw-semibold small">@u.Note</div>
-                        <div class="text-muted small mt-1">@u.Timestamp.ToString("dd MMM yyyy, h:mm tt")</div>
+
+                        <div class="fw-semibold small">
+                            @u.Note
+                        </div>
+
+                        <div class="text-muted small mt-1">
+                            @u.Timestamp.ToString("dd MMM yyyy, h:mm tt")
+                        </div>
+
                     </div>
                 }
             }
+
         </div>
+
     </div>
+
 </div>
 
-<a asp-action="MyComplaints" class="btn btn-outline-secondary mt-4">← Back to my requests</a>
+<a asp-action="MyComplaints"
+   class="btn btn-outline-secondary mt-4">
+    ← Back to my requests
+</a>

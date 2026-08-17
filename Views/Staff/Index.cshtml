@@ -1,85 +1,638 @@
 @model List<Complaint>
+
 @{
-    ViewData["Title"] = (ViewBag.IsMaintenance == true) ? "My Work Orders" : "Maintenance Requests";
-    bool isMaintenance = ViewBag.IsMaintenance == true;
+    ViewData["Title"] = ViewBag.IsMaintenance
+        ? "My Work Orders"
+        : "Hall Maintenance";
+
+    var overdueComplaints =
+        ViewBag.OverdueComplaints as List<Complaint>
+        ?? new List<Complaint>();
+
+    var attentionComplaints =
+        ViewBag.AttentionComplaints as List<Complaint>
+        ?? new List<Complaint>();
+
+    bool isMaintenance = ViewBag.IsMaintenance;
 }
 
 <div class="page-header d-flex justify-content-between align-items-end flex-wrap gap-3">
+
     <div>
-        <div class="eyebrow">@(isMaintenance ? "Maintenance Operations" : "Hall Facilities")</div>
-        <h2>@(isMaintenance ? "My Work Orders" : "Maintenance Requests")</h2>
-        <p>@(isMaintenance ? "Requests assigned to you for inspection and resolution." : "Review, prioritise and assign reported hall maintenance issues.")</p>
+        <div class="eyebrow">
+            @(isMaintenance ? "Maintenance Operations" : "Hall Operations")
+        </div>
+
+        <h2>
+            @(isMaintenance ? "My Work Orders" : "Maintenance Requests")
+        </h2>
+
+        <p>
+            @(isMaintenance
+                ? "Manage maintenance requests assigned to you."
+                : "Monitor maintenance requests for your hall.")
+        </p>
     </div>
+
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">Submitted</div><div class="metric-value">@ViewBag.SubmittedCount</div><div class="metric-note">Awaiting assignment</div></div></div>
-    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">Assigned</div><div class="metric-value">@ViewBag.AssignedCount</div><div class="metric-note">Ready to be worked on</div></div></div>
-    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">In Progress</div><div class="metric-value">@ViewBag.InProgressCount</div><div class="metric-note">Currently being handled</div></div></div>
-    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">Resolved</div><div class="metric-value">@ViewBag.ResolvedCount</div><div class="metric-note">Completed requests</div></div></div>
-</div>
 
-<div class="card-soft mb-3 p-3">
-    <div class="d-flex align-items-center justify-content-between flex-wrap gap-2">
-        <div class="section-title">Request register</div>
-        <form method="get" class="d-flex gap-2 flex-wrap">
-            <select name="status" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">All statuses</option>
-                @foreach (var s in Enum.GetValues<ComplaintStatus>())
-                {
-                    <option value="@s" selected="@(ViewBag.StatusFilter?.ToString() == s.ToString())">@StatusBadgeHelper.Display(s)</option>
-                }
-            </select>
-            <select name="category" class="form-select form-select-sm" onchange="this.form.submit()">
-                <option value="">All categories</option>
-                @foreach (var c in Enum.GetValues<ComplaintCategory>())
-                {
-                    <option value="@c" selected="@(ViewBag.CategoryFilter?.ToString() == c.ToString())">@c</option>
-                }
-            </select>
-        </form>
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="metric-card">
+            <div class="metric-label">Submitted</div>
+            <div class="metric-value">
+                @ViewBag.SubmittedCount
+            </div>
+            <div class="metric-note">
+                Awaiting assignment
+            </div>
+        </div>
     </div>
+
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="metric-card">
+            <div class="metric-label">Assigned</div>
+            <div class="metric-value">
+                @ViewBag.AssignedCount
+            </div>
+            <div class="metric-note">
+                Ready for work
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="metric-card">
+            <div class="metric-label">In Progress</div>
+            <div class="metric-value">
+                @ViewBag.InProgressCount
+            </div>
+            <div class="metric-note">
+                Currently active
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="metric-card">
+            <div class="metric-label">Resolved</div>
+            <div class="metric-value">
+                @ViewBag.ResolvedCount
+            </div>
+            <div class="metric-note">
+                Awaiting confirmation
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="metric-card metric-card-alert">
+            <div class="metric-label">
+                Overdue
+            </div>
+
+            <div class="metric-value">
+                @ViewBag.OverdueCount
+            </div>
+
+            <div class="metric-note">
+                SLA exceeded
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-md-4 col-xl-2">
+        <div class="metric-card metric-card-warning">
+            <div class="metric-label">
+                Needs Attention
+            </div>
+
+            <div class="metric-value">
+                @ViewBag.NeedsAttentionCount
+            </div>
+
+            <div class="metric-note">
+                No recent activity
+            </div>
+        </div>
+    </div>
+
 </div>
 
-@if (!Model.Any())
+@if (!isMaintenance &&
+    (overdueComplaints.Any() || attentionComplaints.Any()))
 {
-    <div class="card-soft p-5 text-center">
-        <div class="section-title mb-1">No requests found</div>
-        <div class="text-muted">There are no maintenance requests matching the selected filters.</div>
+    <div class="card-soft p-4 mb-4">
+
+        <div class="d-flex justify-content-between align-items-center mb-3">
+
+            <div>
+                <div class="section-title mb-1">
+                    SLA Exceptions
+                </div>
+
+                <div class="text-muted small">
+                    Maintenance requests requiring hall staff attention.
+                </div>
+            </div>
+
+        </div>
+
+        @if (overdueComplaints.Any())
+        {
+            <div class="mb-4">
+
+                <div class="d-flex align-items-center gap-2 mb-3">
+
+                    <span class="status-badge badge-overdue">
+                        Overdue
+                    </span>
+
+                    <span class="small text-muted">
+                        @overdueComplaints.Count request(s)
+                    </span>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table align-middle mb-0">
+
+                        <thead>
+                            <tr>
+                                <th>Request</th>
+                                <th>Location</th>
+                                <th>Assigned To</th>
+                                <th>Due</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            @foreach (var complaint in overdueComplaints)
+                            {
+                                var overdueBy =
+                                    complaint.DueAt.HasValue
+                                        ? DateTime.Now - complaint.DueAt.Value
+                                        : TimeSpan.Zero;
+
+                                <tr>
+
+                                    <td>
+                                        <div class="fw-semibold">
+                                            #@complaint.Id
+                                        </div>
+
+                                        <div class="small text-muted">
+                                            @complaint.Category
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <div>
+                                            @complaint.Hall
+                                        </div>
+
+                                        <div class="small text-muted">
+                                            Room @complaint.RoomNumber
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        @(complaint.AssignedTo?.FullName
+                                            ?? "Unassigned")
+                                    </td>
+
+                                    <td>
+                                        @if (complaint.DueAt.HasValue)
+                                        {
+                                            <div class="fw-semibold">
+                                                @complaint.DueAt.Value.ToString(
+                                                    "dd MMM yyyy, h:mm tt")
+                                            </div>
+
+                                            <div class="small text-danger">
+                                                Overdue by
+                                                @FormatDuration(overdueBy)
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">
+                                                No deadline
+                                            </span>
+                                        }
+                                    </td>
+
+                                    <td class="text-end">
+                                        <a asp-action="Details"
+                                           asp-route-id="@complaint.Id"
+                                           class="btn btn-sm btn-outline-danger">
+                                            Review
+                                        </a>
+                                    </td>
+
+                                </tr>
+                            }
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+        }
+
+        @if (attentionComplaints.Any())
+        {
+            <div>
+
+                <div class="d-flex align-items-center gap-2 mb-3">
+
+                    <span class="status-badge badge-attention">
+                        Needs Attention
+                    </span>
+
+                    <span class="small text-muted">
+                        @attentionComplaints.Count request(s)
+                    </span>
+
+                </div>
+
+                <div class="table-responsive">
+
+                    <table class="table align-middle mb-0">
+
+                        <thead>
+                            <tr>
+                                <th>Request</th>
+                                <th>Location</th>
+                                <th>Assigned To</th>
+                                <th>Last Activity</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+
+                        <tbody>
+
+                            @foreach (var complaint in attentionComplaints)
+                            {
+                                <tr>
+
+                                    <td>
+                                        <div class="fw-semibold">
+                                            #@complaint.Id
+                                        </div>
+
+                                        <div class="small text-muted">
+                                            @complaint.Category
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        <div>
+                                            @complaint.Hall
+                                        </div>
+
+                                        <div class="small text-muted">
+                                            Room @complaint.RoomNumber
+                                        </div>
+                                    </td>
+
+                                    <td>
+                                        @(complaint.AssignedTo?.FullName
+                                            ?? "Unassigned")
+                                    </td>
+
+                                    <td>
+                                        @if (complaint.LastActivityAt.HasValue)
+                                        {
+                                            var inactivity =
+                                                DateTime.Now -
+                                                complaint.LastActivityAt.Value;
+
+                                            <div class="fw-semibold">
+                                                @complaint.LastActivityAt.Value.ToString(
+                                                    "dd MMM yyyy, h:mm tt")
+                                            </div>
+
+                                            <div class="small text-warning">
+                                                No activity for
+                                                @FormatDuration(inactivity)
+                                            </div>
+                                        }
+                                        else
+                                        {
+                                            <span class="text-muted">
+                                                No activity recorded
+                                            </span>
+                                        }
+                                    </td>
+
+                                    <td class="text-end">
+                                        <a asp-action="Details"
+                                           asp-route-id="@complaint.Id"
+                                           class="btn btn-sm btn-outline-secondary">
+                                            Review
+                                        </a>
+                                    </td>
+
+                                </tr>
+                            }
+
+                        </tbody>
+
+                    </table>
+
+                </div>
+
+            </div>
+        }
+
     </div>
 }
-else
+else if (!isMaintenance)
 {
-    <div class="card-soft table-shell">
-        <table class="table align-middle">
+    <div class="card-soft p-4 mb-4">
+
+        <div class="d-flex align-items-center gap-3">
+
+            <div>
+                <div class="section-title mb-1">
+                    All maintenance requests are within SLA
+                </div>
+
+                <div class="text-muted small">
+                    There are currently no overdue or inactive requests
+                    requiring attention.
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+}
+
+<div class="card-soft table-shell">
+
+    <div class="p-4 border-bottom">
+
+        <div class="d-flex justify-content-between align-items-center flex-wrap gap-3">
+
+            <div>
+                <div class="section-title mb-1">
+                    @(isMaintenance
+                        ? "Assigned Work Orders"
+                        : "Hall Requests")
+                </div>
+
+                <div class="small text-muted">
+                    @Model.Count request(s)
+                </div>
+            </div>
+
+            <form asp-action="Index"
+                  method="get"
+                  class="d-flex gap-2 flex-wrap">
+
+                <select name="status"
+                        class="form-select form-select-sm">
+
+                    <option value="">
+                        All statuses
+                    </option>
+
+                    @foreach (ComplaintStatus value in
+                        Enum.GetValues(typeof(ComplaintStatus)))
+                    {
+                        if (ViewBag.StatusFilter == value)
+                        {
+                            <option value="@value" selected>
+                                @value
+                            </option>
+                        }
+                        else
+                        {
+                            <option value="@value">
+                                @value
+                            </option>
+                        }
+                    }
+
+                </select>
+
+                <select name="category"
+                        class="form-select form-select-sm">
+
+                    <option value="">
+                        All categories
+                    </option>
+
+                    @foreach (ComplaintCategory value in
+                        Enum.GetValues(typeof(ComplaintCategory)))
+                    {
+                        if (ViewBag.CategoryFilter == value)
+                        {
+                            <option value="@value" selected>
+                                @value
+                            </option>
+                        }
+                        else
+                        {
+                            <option value="@value">
+                                @value
+                            </option>
+                        }
+                    }
+
+                </select>
+
+                <button type="submit"
+                        class="btn btn-sm btn-outline-secondary">
+                    Filter
+                </button>
+
+            </form>
+
+        </div>
+
+    </div>
+
+    <div class="table-responsive">
+
+        <table class="table align-middle mb-0">
+
             <thead>
+
                 <tr>
                     <th>Request</th>
                     <th>Category</th>
                     <th>Location</th>
-                    @if (!isMaintenance) { <th>Assigned To</th> }
-                    <th>Reported</th>
                     <th>Status</th>
+                    <th>SLA</th>
+                    <th>Assigned To</th>
                     <th></th>
                 </tr>
+
             </thead>
+
             <tbody>
-            @foreach (var c in Model)
-            {
-                <tr class="complaint-row">
-                    <td>
-                        <div class="fw-semibold">#@c.Id</div>
-                        <div class="small text-muted">@c.Student?.FullName</div>
-                    </td>
-                    <td>@c.Category</td>
-                    <td>@c.Hall · Room @c.RoomNumber</td>
-                    @if (!isMaintenance) { <td>@(c.AssignedTo?.FullName ?? "Unassigned")</td> }
-                    <td>@c.DateCreated.ToString("dd MMM yyyy")</td>
-                    <td><span class="status-badge @StatusBadgeHelper.CssClass(c.Status)">@StatusBadgeHelper.Display(c.Status)</span></td>
-                    <td class="text-end"><a asp-action="Details" asp-route-id="@c.Id" class="btn btn-sm btn-outline-secondary">View</a></td>
-                </tr>
-            }
+
+                @if (!Model.Any())
+                {
+                    <tr>
+
+                        <td colspan="7"
+                            class="text-center py-5 text-muted">
+
+                            No maintenance requests found.
+
+                        </td>
+
+                    </tr>
+                }
+                else
+                {
+                    @foreach (var complaint in Model)
+                    {
+                        var isOverdue =
+                            ViewData[$"Overdue_{complaint.Id}"] as bool?
+                            ?? false;
+
+                        var needsAttention =
+                            ViewData[$"NeedsAttention_{complaint.Id}"] as bool?
+                            ?? false;
+
+                        <tr>
+
+                            <td>
+
+                                <div class="fw-semibold">
+                                    #@complaint.Id
+                                </div>
+
+                                <div class="small text-muted">
+                                    @complaint.DateCreated.ToString(
+                                        "dd MMM yyyy")
+                                </div>
+
+                            </td>
+
+                            <td>
+                                @complaint.Category
+                            </td>
+
+                            <td>
+
+                                <div>
+                                    @complaint.Hall
+                                </div>
+
+                                <div class="small text-muted">
+                                    Room @complaint.RoomNumber
+                                </div>
+
+                            </td>
+
+                            <td>
+
+                                <span class="status-badge @StatusBadgeHelper.CssClass(complaint.Status)">
+                                    @StatusBadgeHelper.Display(complaint.Status)
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                @if (isOverdue)
+                                {
+                                    <span class="status-badge badge-overdue">
+                                        Overdue
+                                    </span>
+                                }
+                                else if (needsAttention)
+                                {
+                                    <span class="status-badge badge-attention">
+                                        Needs Attention
+                                    </span>
+                                }
+                                else if (complaint.DueAt.HasValue)
+                                {
+                                    <div class="small fw-semibold">
+                                        Due
+                                        @complaint.DueAt.Value.ToString(
+                                            "dd MMM, h:mm tt")
+                                    </div>
+                                }
+                                else
+                                {
+                                    <span class="text-muted small">
+                                        —
+                                    </span>
+                                }
+
+                            </td>
+
+                            <td>
+                                @(complaint.AssignedTo?.FullName
+                                    ?? "Unassigned")
+                            </td>
+
+                            <td class="text-end">
+
+                                <a asp-action="Details"
+                                   asp-route-id="@complaint.Id"
+                                   class="btn btn-sm btn-outline-secondary">
+                                    View
+                                </a>
+
+                            </td>
+
+                        </tr>
+                    }
+                }
+
             </tbody>
+
         </table>
+
     </div>
+
+</div>
+
+@functions
+{
+    string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalMinutes < 1)
+        {
+            return "less than a minute";
+        }
+
+        if (duration.TotalHours < 1)
+        {
+            var minutes = Math.Max(1, (int)duration.TotalMinutes);
+            return $"{minutes}m";
+        }
+
+        if (duration.TotalDays < 1)
+        {
+            var hours = (int)duration.TotalHours;
+            var minutes = duration.Minutes;
+
+            return minutes > 0
+                ? $"{hours}h {minutes}m"
+                : $"{hours}h";
+        }
+
+        var days = (int)duration.TotalDays;
+        var remainingHours = duration.Hours;
+
+        return remainingHours > 0
+            ? $"{days}d {remainingHours}h"
+            : $"{days}d";
+    }
 }

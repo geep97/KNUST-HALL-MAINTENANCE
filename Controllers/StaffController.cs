@@ -6,50 +6,36 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace KnustHallMaintenance.Controllers;
 
-
-
-
 [Authorize(Roles = "HallStaff,Maintenance")]
 public class StaffController : Controller
 {
     private readonly IComplaintService _complaintService;
     private readonly IUserService _userService;
-
+    private readonly ComplaintSlaService _slaService;
 
     public StaffController(
         IComplaintService complaintService,
-        IUserService userService)
+        IUserService userService,
+        ComplaintSlaService slaService)
     {
         _complaintService = complaintService;
         _userService = userService;
+        _slaService = slaService;
     }
 
-
-   
     private int CurrentUserId =>
         int.Parse(
-            User.FindFirstValue(
-                ClaimTypes.NameIdentifier
-            )!
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
-
-
-   
 
     public async Task<IActionResult> Index(
         ComplaintStatus? status,
         ComplaintCategory? category)
     {
         var isMaintenance =
-            User.IsInRole(
-                nameof(UserRole.Maintenance)
-            );
-
+            User.IsInRole(nameof(UserRole.Maintenance));
 
         List<Complaint> complaints;
-
-
-       
 
         if (isMaintenance)
         {
@@ -57,168 +43,131 @@ public class StaffController : Controller
                 await _complaintService.GetAssignedToAsync(
                     CurrentUserId,
                     status,
-                    category
-                );
+                    category);
         }
-
-
-       
-
         else
         {
             var hall =
                 User.FindFirstValue("Hall");
 
-
-            if (
-                string.IsNullOrWhiteSpace(hall)
-            )
+            if (string.IsNullOrWhiteSpace(hall))
             {
                 return Forbid();
             }
-
 
             complaints =
                 await _complaintService.GetForHallAsync(
                     hall,
                     status,
-                    category
-                );
+                    category);
         }
 
-
-        
-
-        ViewBag.StatusFilter =
-            status;
-
-        ViewBag.CategoryFilter =
-            category;
-
-        ViewBag.IsMaintenance =
-            isMaintenance;
-
-
-        
+        ViewBag.StatusFilter = status;
+        ViewBag.CategoryFilter = category;
+        ViewBag.IsMaintenance = isMaintenance;
 
         ViewBag.SubmittedCount =
             complaints.Count(
-                c =>
-                    c.Status ==
-                    ComplaintStatus.Submitted
-            );
-
+                c => c.Status == ComplaintStatus.Submitted);
 
         ViewBag.AssignedCount =
             complaints.Count(
-                c =>
-                    c.Status ==
-                    ComplaintStatus.Assigned
-            );
-
+                c => c.Status == ComplaintStatus.Assigned);
 
         ViewBag.InProgressCount =
             complaints.Count(
-                c =>
-                    c.Status ==
-                    ComplaintStatus.InProgress
-            );
-
+                c => c.Status == ComplaintStatus.InProgress);
 
         ViewBag.ResolvedCount =
             complaints.Count(
-                c =>
-                    c.Status ==
-                    ComplaintStatus.Resolved
-            );
+                c => c.Status == ComplaintStatus.Resolved);
 
+        ViewBag.OverdueCount =
+            complaints.Count(
+                c => _slaService.IsOverdue(c));
 
-        return View(
+        ViewBag.NeedsAttentionCount =
+            complaints.Count(
+                c => _slaService.NeedsAttention(c));
+
+        var overdueComplaints =
             complaints
-        );
+                .Where(c => _slaService.IsOverdue(c))
+                .OrderBy(c => c.DueAt)
+                .ToList();
+
+        var attentionComplaints =
+            complaints
+                .Where(c =>
+                    !_slaService.IsOverdue(c) &&
+                    _slaService.NeedsAttention(c))
+                .OrderBy(c => c.LastActivityAt)
+                .ToList();
+
+        ViewBag.OverdueComplaints =
+            overdueComplaints;
+
+        ViewBag.AttentionComplaints =
+            attentionComplaints;
+
+        foreach (var complaint in complaints)
+        {
+            ViewData[$"Overdue_{complaint.Id}"] =
+                _slaService.IsOverdue(complaint);
+
+            ViewData[$"NeedsAttention_{complaint.Id}"] =
+                _slaService.NeedsAttention(complaint);
+        }
+
+        return View(complaints);
     }
 
-
-   
-
-    public async Task<IActionResult> Details(
-        int id)
+    public async Task<IActionResult> Details(int id)
     {
         var complaint =
-            await _complaintService.GetByIdAsync(
-                id
-            );
-
+            await _complaintService.GetByIdAsync(id);
 
         if (complaint == null)
         {
             return NotFound();
         }
 
-
-        
-
-        if (
-            User.IsInRole(
-                nameof(UserRole.Maintenance)
-            )
-            &&
-            complaint.AssignedToId !=
-            CurrentUserId
-        )
+        if (User.IsInRole(nameof(UserRole.Maintenance)) &&
+            complaint.AssignedToId != CurrentUserId)
         {
             return Forbid();
         }
 
-
-
-        if (
-            User.IsInRole(
-                nameof(UserRole.HallStaff)
-            )
-        )
+        if (User.IsInRole(nameof(UserRole.HallStaff)))
         {
             var hall =
                 User.FindFirstValue("Hall");
 
-
-            if (
-                string.IsNullOrWhiteSpace(hall)
-                ||
+            if (string.IsNullOrWhiteSpace(hall) ||
                 !string.Equals(
                     hall,
                     complaint.Hall,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
+                    StringComparison.OrdinalIgnoreCase))
             {
                 return Forbid();
             }
         }
 
-
-       
-
-            ViewBag.MaintenanceStaff =
-        await _userService
-            .GetMaintenanceStaffAsync(
-                complaint.Hall
-            );
-
-
         ViewBag.IsMaintenance =
-            User.IsInRole(
-                nameof(UserRole.Maintenance)
-            );
+            User.IsInRole(nameof(UserRole.Maintenance));
 
+        ViewBag.IsOverdue =
+            _slaService.IsOverdue(complaint);
 
-        return View(
-            complaint
-        );
+        ViewBag.NeedsAttention =
+            _slaService.NeedsAttention(complaint);
+
+        ViewBag.MaintenanceStaff =
+            await _userService.GetMaintenanceStaffAsync(
+                complaint.Hall);
+
+        return View(complaint);
     }
-
-
-    
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -231,31 +180,20 @@ public class StaffController : Controller
             await _complaintService.AssignAsync(
                 complaintId,
                 CurrentUserId,
-                assignToId
-            );
-
+                assignToId);
 
         if (!assigned)
         {
             return Forbid();
         }
 
-
         TempData["Success"] =
             "Maintenance request assigned successfully.";
 
-
         return RedirectToAction(
             nameof(Details),
-            new
-            {
-                id = complaintId
-            }
-        );
+            new { id = complaintId });
     }
-
-
-    
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -265,43 +203,28 @@ public class StaffController : Controller
         ComplaintStatus status,
         string? note)
     {
-        
-
-        if (
-            status ==
-            ComplaintStatus.Submitted
-        )
+        if (status == ComplaintStatus.Submitted)
         {
             return BadRequest();
         }
 
-
         var updated =
-            await _complaintService
-                .UpdateStatusAsync(
-                    complaintId,
-                    status,
-                    note,
-                    CurrentUserId
-                );
-
+            await _complaintService.UpdateStatusAsync(
+                complaintId,
+                status,
+                note,
+                CurrentUserId);
 
         if (!updated)
         {
             return Forbid();
         }
 
-
         TempData["Success"] =
             "Work order updated.";
 
-
         return RedirectToAction(
             nameof(Details),
-            new
-            {
-                id = complaintId
-            }
-        );
+            new { id = complaintId });
     }
 }

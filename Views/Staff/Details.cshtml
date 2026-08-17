@@ -1,128 +1,758 @@
 @model Complaint
+
 @{
     bool isMaintenance = ViewBag.IsMaintenance == true;
+    bool isOverdue = ViewBag.IsOverdue == true;
+    bool needsAttention = ViewBag.NeedsAttention == true;
+
     var maintenanceStaff = ViewBag.MaintenanceStaff as List<ApplicationUser>;
-    ViewData["Title"] = isMaintenance ? $"Work Order #{Model.Id}" : $"Request #{Model.Id}";
+
+    var now = DateTime.Now;
+
+    DateTime? slaEnd = Model.DueAt;
+
+    TimeSpan? resolutionTime = null;
+
+    if (Model.AssignedAt.HasValue && Model.DateResolved.HasValue)
+    {
+        resolutionTime =
+            Model.DateResolved.Value - Model.AssignedAt.Value;
+    }
+
+    TimeSpan? slaRemaining = null;
+
+    if (Model.DueAt.HasValue && Model.Status != ComplaintStatus.Resolved)
+    {
+        slaRemaining =
+            Model.DueAt.Value - now;
+    }
+
+    TimeSpan? slaVariance = null;
+
+    if (Model.DateResolved.HasValue && Model.DueAt.HasValue)
+    {
+        slaVariance =
+            Model.DueAt.Value - Model.DateResolved.Value;
+    }
+
+    string FormatDuration(TimeSpan duration)
+    {
+        if (duration.TotalMinutes < 1)
+        {
+            return "Less than a minute";
+        }
+
+        if (duration.TotalHours < 1)
+        {
+            return $"{Math.Floor(duration.TotalMinutes)} min";
+        }
+
+        if (duration.TotalDays < 1)
+        {
+            var hours = (int)Math.Floor(duration.TotalHours);
+            var minutes = duration.Minutes;
+
+            return minutes > 0
+                ? $"{hours}h {minutes}m"
+                : $"{hours}h";
+        }
+
+        var days = (int)Math.Floor(duration.TotalDays);
+        var remainingHours = duration.Hours;
+
+        return remainingHours > 0
+            ? $"{days}d {remainingHours}h"
+            : $"{days}d";
+    }
+
+    string SlaResultClass()
+    {
+        if (Model.Status == ComplaintStatus.Resolved)
+        {
+            return slaVariance.HasValue && slaVariance.Value >= TimeSpan.Zero
+                ? "sla-good"
+                : "sla-danger";
+        }
+
+        return isOverdue
+            ? "sla-danger"
+            : "sla-good";
+    }
+
+    string SlaResultText()
+    {
+        if (Model.Status == ComplaintStatus.Resolved)
+        {
+            return slaVariance.HasValue && slaVariance.Value >= TimeSpan.Zero
+                ? "Resolved within SLA"
+                : "Resolved after SLA";
+        }
+
+        return isOverdue
+            ? "SLA breached"
+            : "Within SLA";
+    }
+
+    ViewData["Title"] = isMaintenance
+        ? $"Work Order #{Model.Id}"
+        : $"Request #{Model.Id}";
 }
 
 <div class="page-header d-flex justify-content-between align-items-start flex-wrap gap-3">
     <div class="work-order-header">
-        <div class="eyebrow">@(isMaintenance ? "Assigned Work Order" : "Maintenance Request")</div>
-        <h2 class="mb-1">#@Model.Id · @Model.Category</h2>
-        <p>@Model.Hall · Room @Model.RoomNumber</p>
+        <div class="eyebrow">
+            @(isMaintenance ? "Assigned Work Order" : "Maintenance Request")
+        </div>
+
+        <h2 class="mb-1">
+            #@Model.Id · @Model.Category
+        </h2>
+
+        <p>
+            @Model.Hall · Room @Model.RoomNumber
+        </p>
     </div>
-    <span class="status-badge @StatusBadgeHelper.CssClass(Model.Status)">@StatusBadgeHelper.Display(Model.Status)</span>
+
+    <div class="d-flex flex-column align-items-end gap-2">
+
+        <span class="status-badge @StatusBadgeHelper.CssClass(Model.Status)">
+            @StatusBadgeHelper.Display(Model.Status)
+        </span>
+
+        @if (isOverdue)
+        {
+            <span class="status-badge badge-overdue">
+                Overdue
+            </span>
+        }
+        else if (needsAttention)
+        {
+            <span class="status-badge badge-attention">
+                Needs Attention
+            </span>
+        }
+
+    </div>
 </div>
 
-<div class="row g-4">
-    <div class="col-lg-7">
-        <div class="card-soft p-4 mb-4">
-            <div class="section-title mb-4">Request details</div>
+@if (isOverdue)
+{
+    <div class="alert alert-danger mb-4">
+        <strong>This work order is overdue.</strong>
+        The expected completion time has passed and the request still needs to be resolved.
+    </div>
+}
+else if (needsAttention)
+{
+    <div class="alert alert-warning mb-4">
+        <strong>This work order needs attention.</strong>
+        There has been no recorded activity on this request for more than 24 hours.
+    </div>
+}
 
-            <div class="row">
-                <div class="col-sm-6">
-                    <div class="detail-label">Reported by</div>
-                    <div class="detail-value">@Model.Student?.FullName</div>
-                </div>
-                <div class="col-sm-6">
-                    <div class="detail-label">Reported</div>
-                    <div class="detail-value">@Model.DateCreated.ToString("dd MMM yyyy, h:mm tt")</div>
-                </div>
+<div class="row g-4">
+
+    <div class="col-lg-7">
+
+        <div class="card-soft p-4 mb-4">
+
+            <div class="section-title mb-4">
+                Request details
             </div>
 
-            <div class="detail-label">Description</div>
-            <div class="detail-value">@Model.Description</div>
+            <div class="row g-4">
+
+                <div class="col-sm-6">
+                    <div class="detail-label">
+                        Reported by
+                    </div>
+
+                    <div class="detail-value">
+                        @Model.Student?.FullName
+                    </div>
+                </div>
+
+                <div class="col-sm-6">
+                    <div class="detail-label">
+                        Reported
+                    </div>
+
+                    <div class="detail-value">
+                        @Model.DateCreated.ToString("dd MMM yyyy, h:mm tt")
+                    </div>
+                </div>
+
+                <div class="col-sm-6">
+                    <div class="detail-label">
+                        Hall
+                    </div>
+
+                    <div class="detail-value">
+                        @Model.Hall
+                    </div>
+                </div>
+
+                <div class="col-sm-6">
+                    <div class="detail-label">
+                        Room
+                    </div>
+
+                    <div class="detail-value">
+                        @Model.RoomNumber
+                    </div>
+                </div>
+
+            </div>
+
+            <div class="detail-label mt-4">
+                Description
+            </div>
+
+            <div class="detail-value">
+                @Model.Description
+            </div>
 
             @if (!string.IsNullOrEmpty(Model.PhotoPath))
             {
-                <div class="detail-label">Attached photo</div>
-                <img src="@Model.PhotoPath" class="img-fluid rounded border mb-2" style="max-height:340px;" alt="Maintenance issue photo" />
+                <div class="detail-label mt-4">
+                    Attached photo
+                </div>
+
+                <img src="@Model.PhotoPath"
+                     class="img-fluid rounded border mb-2"
+                     style="max-height:340px;"
+                     alt="Maintenance issue photo" />
             }
+
+        </div>
+
+        <div class="card-soft p-4 mb-4">
+
+            <div class="section-title mb-4">
+                SLA performance
+            </div>
+
+            <div class="sla-result @SlaResultClass() mb-4">
+                <div>
+                    <div class="detail-label">
+                        SLA result
+                    </div>
+
+                    <div class="sla-result-title">
+                        @SlaResultText()
+                    </div>
+                </div>
+
+                @if (Model.Status == ComplaintStatus.Resolved)
+                {
+                    <span class="status-badge @(slaVariance.HasValue && slaVariance.Value >= TimeSpan.Zero ? "badge-success" : "badge-overdue")">
+                        @(slaVariance.HasValue && slaVariance.Value >= TimeSpan.Zero ? "Met" : "Breached")
+                    </span>
+                }
+                else
+                {
+                    <span class="status-badge @(isOverdue ? "badge-overdue" : "badge-success")">
+                        @(isOverdue ? "Breached" : "Active")
+                    </span>
+                }
+            </div>
+
+            <div class="row g-4">
+
+                <div class="col-sm-6">
+                    <div class="detail-label">
+                        SLA deadline
+                    </div>
+
+                    <div class="detail-value">
+                        @if (Model.DueAt.HasValue)
+                        {
+                            @Model.DueAt.Value.ToString("dd MMM yyyy, h:mm tt")
+                        }
+                        else
+                        {
+                            <span class="text-muted">
+                                Starts when assigned
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                <div class="col-sm-6">
+                    <div class="detail-label">
+                        Assigned
+                    </div>
+
+                    <div class="detail-value">
+                        @if (Model.AssignedAt.HasValue)
+                        {
+                            @Model.AssignedAt.Value.ToString("dd MMM yyyy, h:mm tt")
+                        }
+                        else
+                        {
+                            <span class="text-muted">
+                                Not assigned
+                            </span>
+                        }
+                    </div>
+                </div>
+
+                @if (Model.Status == ComplaintStatus.Resolved && resolutionTime.HasValue)
+                {
+                    <div class="col-sm-6">
+                        <div class="detail-label">
+                            Resolution time
+                        </div>
+
+                        <div class="detail-value">
+                            @FormatDuration(resolutionTime.Value)
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6">
+                        <div class="detail-label">
+                            SLA outcome
+                        </div>
+
+                        <div class="detail-value">
+                            @if (slaVariance.HasValue && slaVariance.Value >= TimeSpan.Zero)
+                            {
+                                <span>
+                                    @FormatDuration(slaVariance.Value) ahead
+                                </span>
+                            }
+                            else if (slaVariance.HasValue)
+                            {
+                                <span class="text-danger">
+                                    @FormatDuration(slaVariance.Value.Duration()) overdue
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+                else if (Model.DueAt.HasValue)
+                {
+                    <div class="col-sm-6">
+                        <div class="detail-label">
+                            Time remaining
+                        </div>
+
+                        <div class="detail-value">
+                            @if (slaRemaining.HasValue && slaRemaining.Value > TimeSpan.Zero)
+                            {
+                                @FormatDuration(slaRemaining.Value)
+                            }
+                            else
+                            {
+                                <span class="text-danger">
+                                    SLA breached
+                                </span>
+                            }
+                        </div>
+                    </div>
+
+                    <div class="col-sm-6">
+                        <div class="detail-label">
+                            Current SLA status
+                        </div>
+
+                        <div class="detail-value">
+                            @if (isOverdue)
+                            {
+                                <span class="text-danger">
+                                    Overdue
+                                </span>
+                            }
+                            else
+                            {
+                                <span class="text-success">
+                                    Within SLA
+                                </span>
+                            }
+                        </div>
+                    </div>
+                }
+
+            </div>
+
+        </div>
+
+        <div class="card-soft p-4 mb-4">
+
+            <div class="section-title mb-4">
+                Work tracking
+            </div>
+
+            <div class="row g-4">
+
+                <div class="col-sm-6">
+
+                    <div class="detail-label">
+                        Assigned
+                    </div>
+
+                    <div class="detail-value">
+                        @if (Model.AssignedAt.HasValue)
+                        {
+                            @Model.AssignedAt.Value.ToString("dd MMM yyyy, h:mm tt")
+                        }
+                        else
+                        {
+                            <span class="text-muted">
+                                Not assigned
+                            </span>
+                        }
+                    </div>
+
+                </div>
+
+                <div class="col-sm-6">
+
+                    <div class="detail-label">
+                        Started
+                    </div>
+
+                    <div class="detail-value">
+                        @if (Model.StartedAt.HasValue)
+                        {
+                            @Model.StartedAt.Value.ToString("dd MMM yyyy, h:mm tt")
+                        }
+                        else
+                        {
+                            <span class="text-muted">
+                                Not started
+                            </span>
+                        }
+                    </div>
+
+                </div>
+
+                <div class="col-sm-6">
+
+                    <div class="detail-label">
+                        Expected completion
+                    </div>
+
+                    <div class="detail-value">
+                        @if (Model.DueAt.HasValue)
+                        {
+                            @Model.DueAt.Value.ToString("dd MMM yyyy, h:mm tt")
+                        }
+                        else
+                        {
+                            <span class="text-muted">
+                                Not assigned
+                            </span>
+                        }
+                    </div>
+
+                </div>
+
+                <div class="col-sm-6">
+
+                    <div class="detail-label">
+                        Last activity
+                    </div>
+
+                    <div class="detail-value">
+                        @if (Model.LastActivityAt.HasValue)
+                        {
+                            @Model.LastActivityAt.Value.ToString("dd MMM yyyy, h:mm tt")
+                        }
+                        else
+                        {
+                            <span class="text-muted">
+                                No activity recorded
+                            </span>
+                        }
+                    </div>
+
+                </div>
+
+                @if (Model.DateResolved.HasValue)
+                {
+                    <div class="col-sm-6">
+
+                        <div class="detail-label">
+                            Resolved
+                        </div>
+
+                        <div class="detail-value">
+                            @Model.DateResolved.Value.ToString("dd MMM yyyy, h:mm tt")
+                        </div>
+
+                    </div>
+                }
+
+            </div>
+
         </div>
 
         <div class="card-soft p-4">
-            <div class="section-title mb-4">Activity</div>
+
+            <div class="section-title mb-4">
+                Activity
+            </div>
+
             @if (!Model.Updates.Any())
             {
-                <p class="text-muted mb-0">No activity has been recorded yet.</p>
+                <p class="text-muted mb-0">
+                    No activity has been recorded yet.
+                </p>
             }
             else
             {
                 foreach (var u in Model.Updates.OrderByDescending(x => x.Timestamp))
                 {
                     <div class="timeline-item">
+
                         <span class="timeline-dot"></span>
-                        <div class="fw-semibold small">@u.Note</div>
-                        <div class="text-muted small mt-1">@u.UpdatedBy?.FullName · @u.Timestamp.ToString("dd MMM yyyy, h:mm tt")</div>
+
+                        <div class="fw-semibold small">
+                            @u.Note
+                        </div>
+
+                        <div class="text-muted small mt-1">
+                            @u.UpdatedBy?.FullName ·
+                            @u.Timestamp.ToString("dd MMM yyyy, h:mm tt")
+                        </div>
+
                     </div>
                 }
             }
+
         </div>
+
     </div>
 
     <div class="col-lg-5">
+
         @if (!isMaintenance)
         {
             <div class="card-soft p-4 mb-4">
-                <div class="section-title mb-1">Assignment</div>
-                <p class="text-muted small mb-3">Route this request to the appropriate maintenance technician.</p>
+
+                <div class="section-title mb-1">
+                    Assignment
+                </div>
+
+                <p class="text-muted small mb-3">
+                    Route this request to the appropriate maintenance technician.
+                </p>
 
                 @if (Model.AssignedToId == null)
                 {
-                    <form asp-controller="Staff" asp-action="Assign" method="post">
+                    <form asp-controller="Staff"
+                          asp-action="Assign"
+                          method="post">
+
                         @Html.AntiForgeryToken()
-                        <input type="hidden" name="complaintId" value="@Model.Id" />
-                        <select name="assignToId" class="form-select mb-3" required>
-                            <option value="">Select technician</option>
+
+                        <input type="hidden"
+                               name="complaintId"
+                               value="@Model.Id" />
+
+                        <select name="assignToId"
+                                class="form-select mb-3"
+                                required>
+
+                            <option value="">
+                                Select technician
+                            </option>
+
                             @if (maintenanceStaff != null)
                             {
                                 foreach (var m in maintenanceStaff)
                                 {
-                                    <option value="@m.Id">@m.FullName</option>
+                                    <option value="@m.Id">
+                                        @m.FullName
+                                    </option>
                                 }
                             }
+
                         </select>
-                        <button type="submit" class="btn btn-knust w-100">Assign Work Order</button>
+
+                        <button type="submit"
+                                class="btn btn-knust w-100">
+                            Assign Work Order
+                        </button>
+
                     </form>
                 }
                 else
                 {
-                    <div class="detail-label">Assigned technician</div>
-                    <div class="detail-value mb-0">@Model.AssignedTo?.FullName</div>
+                    <div class="detail-label">
+                        Assigned technician
+                    </div>
+
+                    <div class="detail-value mb-0">
+                        @Model.AssignedTo?.FullName
+                    </div>
                 }
+
             </div>
         }
 
         @if (isMaintenance)
         {
-            <div class="card-soft p-4">
-                <div class="section-title mb-1">Update work order</div>
-                <p class="text-muted small mb-3">Record progress and leave a note for the hall staff.</p>
+            <div class="card-soft p-4 mb-4">
 
-                <form asp-controller="Staff" asp-action="UpdateStatus" method="post">
+                <div class="section-title mb-1">
+                    Update work order
+                </div>
+
+                <p class="text-muted small mb-3">
+                    Record progress and leave a note for the hall staff.
+                </p>
+
+                <form asp-controller="Staff"
+                      asp-action="UpdateStatus"
+                      method="post">
+
                     @Html.AntiForgeryToken()
-                    <input type="hidden" name="complaintId" value="@Model.Id" />
-                    <label class="form-label">Status</label>
-                    <select name="status" class="form-select mb-3" required>
-                        <option value="Assigned" selected="@(Model.Status == ComplaintStatus.Assigned)">Assigned</option>
-                        <option value="InProgress" selected="@(Model.Status == ComplaintStatus.InProgress)">In Progress</option>
-                        <option value="Resolved" selected="@(Model.Status == ComplaintStatus.Resolved)">Resolved</option>
+
+                    <input type="hidden"
+                           name="complaintId"
+                           value="@Model.Id" />
+
+                    <label class="form-label">
+                        Status
+                    </label>
+
+                    <select name="status"
+                            class="form-select mb-3"
+                            required>
+
+                        <option value="Assigned"
+                                selected="@(Model.Status == ComplaintStatus.Assigned)">
+                            Assigned
+                        </option>
+
+                        <option value="InProgress"
+                                selected="@(Model.Status == ComplaintStatus.InProgress)">
+                            In Progress
+                        </option>
+
+                        <option value="Resolved"
+                                selected="@(Model.Status == ComplaintStatus.Resolved)">
+                            Resolved
+                        </option>
+
                     </select>
-                    <label class="form-label">Work note</label>
-                    <textarea name="note" class="form-control mb-3" rows="4" placeholder="Describe what you inspected, repaired or replaced..."></textarea>
-                    <button type="submit" class="btn btn-knust w-100">Save Update</button>
+
+                    <label class="form-label">
+                        Work note
+                    </label>
+
+                    <textarea name="note"
+                              class="form-control mb-3"
+                              rows="4"
+                              placeholder="Describe what you inspected, repaired or replaced..."></textarea>
+
+                    <button type="submit"
+                            class="btn btn-knust w-100">
+                        Save Update
+                    </button>
+
                 </form>
+
             </div>
         }
         else if (Model.AssignedToId != null)
         {
             <div class="card-soft p-4">
-                <div class="section-title mb-1">Current status</div>
-                <p class="text-muted small mb-3">Status is updated by the assigned maintenance technician.</p>
-                <span class="status-badge @StatusBadgeHelper.CssClass(Model.Status)">@StatusBadgeHelper.Display(Model.Status)</span>
+
+                <div class="section-title mb-1">
+                    Current status
+                </div>
+
+                <p class="text-muted small mb-3">
+                    Status is updated by the assigned maintenance technician.
+                </p>
+
+                <span class="status-badge @StatusBadgeHelper.CssClass(Model.Status)">
+                    @StatusBadgeHelper.Display(Model.Status)
+                </span>
+
             </div>
         }
+
+        @if (Model.AssignedToId != null)
+        {
+            <div class="card-soft p-4 mt-4">
+
+                <div class="section-title mb-1">
+                    SLA summary
+                </div>
+
+                <p class="text-muted small mb-3">
+                    Service-level performance for this maintenance request.
+                </p>
+
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted small">
+                        Status
+                    </span>
+
+                    <span class="fw-semibold @(isOverdue ? "text-danger" : "text-success")">
+                        @SlaResultText()
+                    </span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center py-2 border-bottom">
+                    <span class="text-muted small">
+                        Deadline
+                    </span>
+
+                    <span class="fw-semibold">
+                        @if (Model.DueAt.HasValue)
+                        {
+                            @Model.DueAt.Value.ToString("dd MMM, h:mm tt")
+                        }
+                        else
+                        {
+                            <span>—</span>
+                        }
+                    </span>
+                </div>
+
+                <div class="d-flex justify-content-between align-items-center py-2">
+                    <span class="text-muted small">
+                        @if (Model.Status == ComplaintStatus.Resolved)
+                        {
+                            @:Resolution time
+                        }
+                        else
+                        {
+                            @:Time remaining
+                        }
+                    </span>
+
+                    <span class="fw-semibold">
+                        @if (Model.Status == ComplaintStatus.Resolved && resolutionTime.HasValue)
+                        {
+                            @FormatDuration(resolutionTime.Value)
+                        }
+                        else if (slaRemaining.HasValue && slaRemaining.Value > TimeSpan.Zero)
+                        {
+                            @FormatDuration(slaRemaining.Value)
+                        }
+                        else
+                        {
+                            <span class="text-danger">
+                                Overdue
+                            </span>
+                        }
+                    </span>
+                </div>
+
+            </div>
+        }
+
     </div>
+
 </div>
 
-<a asp-action="Index" class="btn btn-outline-secondary mt-4">← Back to @(isMaintenance ? "my work orders" : "requests")</a>
+<a asp-action="Index"
+   class="btn btn-outline-secondary mt-4">
+    ← Back to @(isMaintenance ? "my work orders" : "requests")
+</a>

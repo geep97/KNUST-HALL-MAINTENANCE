@@ -23,7 +23,6 @@ public class ComplaintsController : Controller
 
     private const long MaxPhotoSize = 5 * 1024 * 1024;
 
-
     public ComplaintsController(
         IComplaintService service,
         IWebHostEnvironment env)
@@ -32,24 +31,16 @@ public class ComplaintsController : Controller
         _env = env;
     }
 
-
-   
-
     private int CurrentUserId =>
         int.Parse(
             User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
 
-
     private string CurrentStudentHall =>
         User.FindFirstValue("Hall") ?? string.Empty;
 
-
     private string CurrentStudentRoom =>
         User.FindFirstValue("RoomNumber") ?? string.Empty;
-
-
-   
 
     public async Task<IActionResult> MyComplaints()
     {
@@ -58,9 +49,6 @@ public class ComplaintsController : Controller
 
         return View(complaints);
     }
-
-
-    
 
     [HttpGet]
     public IActionResult Create()
@@ -74,259 +62,157 @@ public class ComplaintsController : Controller
         return View(model);
     }
 
-
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(
         ComplaintCreateViewModel model)
     {
-        
-
-
         try
         {
-           
-
             var hall = CurrentStudentHall;
             var roomNumber = CurrentStudentRoom;
-
-
-           
 
             model.Hall = hall;
             model.RoomNumber = roomNumber;
 
-
-           
-
             IFormFile? uploadedPhoto = null;
-
 
             if (Request.HasFormContentType)
             {
                 var form = await Request.ReadFormAsync();
-
                 uploadedPhoto = form.Files["Photo"];
-
-                Console.WriteLine(
-                    $"Files received: {form.Files.Count}"
-                );
             }
-
-
 
             if (!ModelState.IsValid)
             {
-                Console.WriteLine("ModelState is invalid.");
-
                 return View(model);
             }
 
-
-          
-
             string? photoPath = null;
 
-
-            if (
-                uploadedPhoto != null &&
-                uploadedPhoto.Length > 0
-            )
+            if (uploadedPhoto != null &&
+                uploadedPhoto.Length > 0)
             {
-                Console.WriteLine(
-                    $"Photo received: {uploadedPhoto.FileName}"
-                );
-
-                Console.WriteLine(
-                    $"Photo size: {uploadedPhoto.Length} bytes"
-                );
-
-
-                
-
                 if (uploadedPhoto.Length > MaxPhotoSize)
                 {
                     ModelState.AddModelError(
                         "Photo",
-                        "The photo must be 5 MB or smaller."
-                    );
+                        "The photo must be 5 MB or smaller.");
 
                     return View(model);
                 }
 
-
-                
-
                 var extension =
                     Path.GetExtension(
-                        uploadedPhoto.FileName
-                    ).ToLowerInvariant();
-
-
-                Console.WriteLine(
-                    $"Extension: {extension}"
-                );
-
+                        uploadedPhoto.FileName)
+                    .ToLowerInvariant();
 
                 if (!AllowedExtensions.Contains(extension))
                 {
                     ModelState.AddModelError(
                         "Photo",
-                        "Only JPG, JPEG, PNG and WEBP images are allowed."
-                    );
+                        "Only JPG, JPEG, PNG and WEBP images are allowed.");
 
                     return View(model);
                 }
 
-
-
                 var uploadsDirectory =
                     Path.Combine(
                         _env.WebRootPath,
-                        "uploads"
-                    );
-
+                        "uploads");
 
                 Directory.CreateDirectory(
-                    uploadsDirectory
-                );
-
-
-                Console.WriteLine(
-                    $"Upload directory: {uploadsDirectory}"
-                );
-
-
-              
+                    uploadsDirectory);
 
                 var fileName =
                     $"{Guid.NewGuid():N}{extension}";
 
-
                 var filePath =
                     Path.Combine(
                         uploadsDirectory,
-                        fileName
-                    );
-
-
-                Console.WriteLine(
-                    $"Saving to: {filePath}"
-                );
-
-
-               
+                        fileName);
 
                 await using (
                     var stream = new FileStream(
                         filePath,
                         FileMode.CreateNew,
                         FileAccess.Write,
-                        FileShare.None
-                    ))
+                        FileShare.None))
                 {
                     await uploadedPhoto.CopyToAsync(stream);
                 }
 
-
                 photoPath =
                     $"/uploads/{fileName}";
-
-
-                Console.WriteLine(
-                    $"Photo saved successfully: {photoPath}"
-                );
             }
-            else
-            {
-                Console.WriteLine(
-                    "No photo uploaded."
-                );
-            }
-
-
 
             var complaint = new Complaint
             {
                 StudentId = CurrentUserId,
-
                 Category = model.Category,
-
                 Description = model.Description,
-
                 Hall = hall,
-
                 RoomNumber = roomNumber,
-
                 PhotoPath = photoPath
             };
 
-
-           
-
-            Console.WriteLine(
-                "Saving complaint..."
-            );
-
-
-            await _service.CreateAsync(
-                complaint
-            );
-
-
-            Console.WriteLine(
-                $"Complaint saved. ID: {complaint.Id}"
-            );
-
+            await _service.CreateAsync(complaint);
 
             return RedirectToAction(
-                nameof(MyComplaints)
-            );
+                nameof(MyComplaints));
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine("");
-            Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            Console.WriteLine("UPLOAD / COMPLAINT ERROR");
-            Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            Console.WriteLine(ex.ToString());
-            Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-
-
             ModelState.AddModelError(
                 "",
-                "There was a problem submitting the request."
-            );
+                "There was a problem submitting the request.");
 
-
-           
             model.Hall = CurrentStudentHall;
             model.RoomNumber = CurrentStudentRoom;
-
 
             return View(model);
         }
     }
-
-
-    
 
     public async Task<IActionResult> Details(int id)
     {
         var complaint =
             await _service.GetByIdAsync(id);
 
-
-        if (
-            complaint == null ||
-            complaint.StudentId != CurrentUserId
-        )
+        if (complaint == null ||
+            complaint.StudentId != CurrentUserId)
         {
             return NotFound();
         }
 
-
         return View(complaint);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmResolution(
+        int complaintId,
+        bool confirmed,
+        string? note)
+    {
+        var success =
+            await _service.ConfirmResolutionAsync(
+                complaintId,
+                CurrentUserId,
+                confirmed,
+                note);
+
+        if (!success)
+        {
+            return NotFound();
+        }
+
+        TempData["Success"] = confirmed
+            ? "Thank you. The maintenance request has been confirmed as resolved."
+            : "The request has been reopened and sent back to the maintenance team.";
+
+        return RedirectToAction(
+            nameof(Details),
+            new { id = complaintId });
     }
 }

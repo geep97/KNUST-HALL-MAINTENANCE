@@ -53,6 +53,7 @@ builder.Services.AddScoped<
 builder.Services.AddScoped<IComplaintService, ComplaintService>();
 builder.Services.AddScoped<IUserService, UserService>();
 builder.Services.AddScoped<IStudentService, StudentService>();
+builder.Services.AddScoped<ComplaintSlaService>();
 
 builder.Services.AddScoped<
     IUserClaimsPrincipalFactory<ApplicationUser>,
