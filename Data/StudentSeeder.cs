@@ -250,3 +250,4 @@ public static class StudentSeeder
         return $"{block}{number:00}";
     }
 }
+

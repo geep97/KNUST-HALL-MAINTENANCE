@@ -45,8 +45,11 @@ public class ComplaintService : IComplaintService
         int studentId)
     {
         return await _context.Complaints
-            .AsNoTracking()
+            .AsSplitQuery()
             .Include(c => c.AssignedTo)
+            .Include(c => c.Photos)
+            .Include(c => c.Updates)
+                .ThenInclude(u => u.UpdatedBy)
             .Where(c => c.StudentId == studentId)
             .OrderByDescending(c => c.DateCreated)
             .ToListAsync();
@@ -57,7 +60,6 @@ public class ComplaintService : IComplaintService
         ComplaintCategory? categoryFilter = null)
     {
         var query = _context.Complaints
-            .AsNoTracking()
             .Include(c => c.Student)
             .Include(c => c.AssignedTo)
             .AsQueryable();
@@ -85,7 +87,6 @@ public class ComplaintService : IComplaintService
         ComplaintCategory? categoryFilter = null)
     {
         var query = _context.Complaints
-            .AsNoTracking()
             .Include(c => c.Student)
             .Include(c => c.AssignedTo)
             .Where(c => c.Hall == hall)
@@ -114,7 +115,6 @@ public class ComplaintService : IComplaintService
         ComplaintCategory? categoryFilter = null)
     {
         var query = _context.Complaints
-            .AsNoTracking()
             .Include(c => c.Student)
             .Include(c => c.AssignedTo)
             .Where(c => c.AssignedToId == maintenanceId)
@@ -140,9 +140,10 @@ public class ComplaintService : IComplaintService
     public async Task<Complaint?> GetByIdAsync(int id)
     {
         return await _context.Complaints
-            .AsNoTracking()
+            .AsSplitQuery()
             .Include(c => c.Student)
             .Include(c => c.AssignedTo)
+            .Include(c => c.Photos)
             .Include(c => c.Updates)
                 .ThenInclude(u => u.UpdatedBy)
             .FirstOrDefaultAsync(c => c.Id == id);

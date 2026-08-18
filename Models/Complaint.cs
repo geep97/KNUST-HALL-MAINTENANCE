@@ -11,6 +11,7 @@ public class Complaint
     public string Description { get; set; } = string.Empty;
     public string Hall { get; set; } = string.Empty;
     public string RoomNumber { get; set; } = string.Empty;
+
     public string? PhotoPath { get; set; }
 
     public ComplaintStatus Status { get; set; } = ComplaintStatus.Submitted;
@@ -29,5 +30,9 @@ public class Complaint
     public bool? ResolutionConfirmed { get; set; }
     public DateTime? ResolutionConfirmedAt { get; set; }
 
-    public ICollection<ComplaintUpdate> Updates { get; set; } = new List<ComplaintUpdate>();
+    public ICollection<ComplaintPhoto> Photos { get; set; }
+        = new List<ComplaintPhoto>();
+
+    public ICollection<ComplaintUpdate> Updates { get; set; }
+        = new List<ComplaintUpdate>();
 }

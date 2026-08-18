@@ -1,286 +1,218 @@
-@model ComplaintCreateViewModel
+@model KnustHallMaintenance.Models.ViewModels.ComplaintCreateViewModel
 
 @{
     ViewData["Title"] = "Report an Issue";
 }
 
-<div class="page-header">
+<div class="page-shell">
 
-    <div class="eyebrow">
-        Student Services
+    <div class="page-header">
+        <div>
+            <div class="eyebrow">STUDENT SERVICES</div>
+            <h1>Report a Maintenance Issue</h1>
+            <p class="page-subtitle">
+                Tell your hall maintenance team what needs attention.
+            </p>
+        </div>
     </div>
 
-    <h2>
-        Report a Maintenance Issue
-    </h2>
+    <div class="row g-4">
 
-    <p>
-        Provide enough detail for hall staff to identify and assign the problem quickly.
-    </p>
+        <div class="col-lg-8">
 
-</div>
+            <div class="card-soft p-4">
 
+                <form asp-controller="Complaints"
+                      asp-action="Create"
+                      method="post"
+                      enctype="multipart/form-data">
 
-<div class="row g-4">
+                    @Html.AntiForgeryToken()
 
-    <!-- =====================================================
-         MAIN FORM
-         ===================================================== -->
-
-    <div class="col-lg-8">
-
-        <div class="card-soft p-4">
-
-            <form asp-controller="Complaints"
-                  asp-action="Create"
-                  method="post"
-                  enctype="multipart/form-data">
-
-                @Html.AntiForgeryToken()
-
-
-                <!-- =================================================
-                     ISSUE INFORMATION
-                     ================================================= -->
-
-                <div class="section-title mb-4">
-                    Issue information
-                </div>
-
-
-                <!-- =================================================
-                     CATEGORY
-                     ================================================= -->
-
-                <div class="mb-3">
-
-                    <label asp-for="Category"
-                           class="form-label">
-                        Category
-                    </label>
-
-                    <select asp-for="Category"
-                            asp-items="Html.GetEnumSelectList<ComplaintCategory>()"
-                            class="form-select">
-
-                        <option value="">
-                            Select an issue category
-                        </option>
-
-                    </select>
-
-                    <span asp-validation-for="Category"
-                          class="text-danger small">
-                    </span>
-
-                </div>
-
-
-                <!-- =================================================
-                     STUDENT LOCATION
-                     ================================================= -->
-
-                <div class="row">
-
-                    <!-- HALL -->
-
-                    <div class="col-md-6 mb-3">
-
-                        <label class="form-label">
-                            Hall
-                        </label>
-
-                        <input type="text"
-                               class="form-control"
-                               value="@Model.Hall"
-                               readonly />
-
-                        <div class="form-text">
-                            Your assigned hall
-                        </div>
-
+                    <div class="section-title mb-4">
+                        Issue information
                     </div>
 
+                    <div class="mb-3">
 
-                    <!-- ROOM NUMBER -->
-
-                    <div class="col-md-6 mb-3">
-
-                        <label class="form-label">
-                            Room number
+                        <label asp-for="Category"
+                               class="form-label">
+                            Category
                         </label>
 
-                        <input type="text"
-                               class="form-control"
-                               value="@Model.RoomNumber"
-                               readonly />
+                        <select asp-for="Category"
+                                asp-items="Html.GetEnumSelectList<ComplaintCategory>()"
+                                class="form-select">
 
-                        <div class="form-text">
-                            Your assigned room
-                        </div>
+                            <option value="">
+                                Select an issue category
+                            </option>
 
-                    </div>
+                        </select>
 
-                </div>
-
-
-                <!-- =================================================
-                     DESCRIPTION
-                     ================================================= -->
-
-                <div class="mb-3">
-
-                    <label asp-for="Description"
-                           class="form-label">
-                        Description
-                    </label>
-
-                    <textarea asp-for="Description"
-                              class="form-control"
-                              rows="5"
-                              placeholder="What is wrong? When did you notice it? Include any useful details..."></textarea>
-
-                    <span asp-validation-for="Description"
-                          class="text-danger small">
-                    </span>
-
-                </div>
-
-
-                <!-- =================================================
-                     PHOTO
-                     ================================================= -->
-
-                <div class="mb-4">
-
-                    <label asp-for="Photo"
-                           class="form-label">
-
-                        Photo
-
-                        <span class="fw-normal text-muted">
-                            (optional)
+                        <span asp-validation-for="Category"
+                              class="text-danger small">
                         </span>
 
-                    </label>
+                    </div>
 
+                    <div class="row">
 
-                    <input asp-for="Photo"
-                           type="file"
-                           class="form-control"
-                           accept=".jpg,.jpeg,.png,.webp" />
+                        <div class="col-md-6 mb-3">
 
+                            <label class="form-label">
+                                Hall
+                            </label>
 
-                    <span asp-validation-for="Photo"
-                          class="text-danger small">
-                    </span>
+                            <input type="text"
+                                   class="form-control"
+                                   value="@Model.Hall"
+                                   readonly />
 
+                            <div class="form-text">
+                                Your assigned hall
+                            </div>
 
-                    <div class="form-text">
+                        </div>
 
-                        JPG, JPEG, PNG or WEBP.
-                        Maximum size: 5 MB.
+                        <div class="col-md-6 mb-3">
 
-                        <br />
+                            <label class="form-label">
+                                Room number
+                            </label>
 
-                        A clear photo can help maintenance staff
-                        identify the issue before visiting your room.
+                            <input type="text"
+                                   class="form-control"
+                                   value="@Model.RoomNumber"
+                                   readonly />
+
+                            <div class="form-text">
+                                Your assigned room
+                            </div>
+
+                        </div>
 
                     </div>
 
-                </div>
+                    <div class="mb-3">
 
+                        <label asp-for="Description"
+                               class="form-label">
+                            Description
+                        </label>
 
-                <!-- =================================================
-                     BUTTONS
-                     ================================================= -->
+                        <textarea asp-for="Description"
+                                  class="form-control"
+                                  rows="5"
+                                  placeholder="What is wrong? When did you notice it? Include any useful details..."></textarea>
 
-                <div class="d-flex gap-2 flex-wrap">
+                        <span asp-validation-for="Description"
+                              class="text-danger small">
+                        </span>
 
-                    <button type="submit"
+                    </div>
+
+                    <div class="mb-4">
+
+                        <label class="form-label">
+                            Photos
+
+                            <span class="fw-normal text-muted">
+                                (optional)
+                            </span>
+                        </label>
+
+                        <input asp-for="Photos"
+                               type="file"
+                               id="photosInput"
+                               name="Photos"
+                               class="form-control"
+                               accept=".jpg,.jpeg,.png,.webp"
+                               multiple />
+
+                        <span asp-validation-for="Photos"
+                              class="text-danger small">
+                        </span>
+
+                        <div class="form-text">
+
+                            JPG, JPEG, PNG or WEBP.
+
+                            Maximum 5 photos.
+                            Maximum size: 5 MB per photo.
+
+                            <br />
+
+                            You can select more photos later and they will
+                            be added to your current selection.
+
+                        </div>
+
+                        <div id="photoSelectionError"
+                             class="text-danger small mt-2"
+                             style="display:none;">
+                        </div>
+
+                        <div id="photoPreview"
+                             class="row g-3 mt-2">
+                        </div>
+
+                    </div>
+
+                    <div class="d-flex gap-2">
+
+                        <button type="submit"
                             class="btn btn-knust">
-
                         Submit Request
-
                     </button>
 
+                        <a asp-controller="Complaints"
+                           asp-action="MyComplaints"
+                           class="btn btn-outline-secondary">
+                            Cancel
+                        </a>
 
-                    <a asp-controller="Complaints"
-                       asp-action="MyComplaints"
-                       class="btn btn-outline-secondary">
+                    </div>
 
-                        Cancel
+                </form>
 
-                    </a>
-
-                </div>
-
-            </form>
+            </div>
 
         </div>
 
-    </div>
+        <div class="col-lg-4">
 
+            <div class="card-soft p-4">
 
-    <!-- =====================================================
-         INFORMATION PANEL
-         ===================================================== -->
-
-    <div class="col-lg-4">
-
-        <div class="card-soft p-4">
-
-            <div class="section-title mb-3">
-                What happens next?
-            </div>
-
-
-            <div class="small text-muted">
+                <div class="section-title mb-4">
+                    What happens next?
+                </div>
 
                 <p>
-
                     <strong>1. Submitted</strong>
-
                     <br />
-
                     Your request is recorded in the hall
                     maintenance register.
-
                 </p>
 
-
                 <p>
-
                     <strong>2. Assigned</strong>
-
                     <br />
-
                     Hall staff review the issue and assign it
                     to the appropriate technician.
-
                 </p>
-
 
                 <p>
-
                     <strong>3. In progress</strong>
-
                     <br />
-
                     The technician records progress while
                     working on the request.
-
                 </p>
 
-
                 <p class="mb-0">
-
                     <strong>4. Resolved</strong>
-
                     <br />
-
                     You can see when the request has been completed.
-
                 </p>
 
             </div>
@@ -290,3 +222,151 @@
     </div>
 
 </div>
+
+@section Scripts {
+
+    <partial name="_ValidationScriptsPartial" />
+
+    <script>
+
+        const photosInput =
+            document.getElementById("photosInput");
+
+        const photoPreview =
+            document.getElementById("photoPreview");
+
+        const photoSelectionError =
+            document.getElementById("photoSelectionError");
+
+        const maxPhotoCount = 5;
+
+        let selectedFiles = [];
+
+        photosInput.addEventListener("change", function () {
+
+            photoSelectionError.style.display = "none";
+            photoSelectionError.textContent = "";
+
+            const newlySelectedFiles =
+                Array.from(this.files);
+
+            for (const file of newlySelectedFiles) {
+
+                const alreadySelected =
+                    selectedFiles.some(existingFile =>
+                        existingFile.name === file.name &&
+                        existingFile.size === file.size &&
+                        existingFile.lastModified === file.lastModified
+                    );
+
+                if (alreadySelected) {
+                    continue;
+                }
+
+                if (selectedFiles.length >= maxPhotoCount) {
+
+                    photoSelectionError.textContent =
+                        "You can upload a maximum of 5 photos.";
+
+                    photoSelectionError.style.display = "block";
+
+                    break;
+                }
+
+                selectedFiles.push(file);
+            }
+
+            updateInputFiles();
+            renderPreviews();
+
+        });
+
+        function updateInputFiles() {
+
+            const dataTransfer =
+                new DataTransfer();
+
+            selectedFiles.forEach(file => {
+                dataTransfer.items.add(file);
+            });
+
+            photosInput.files =
+                dataTransfer.files;
+        }
+
+        function renderPreviews() {
+
+            photoPreview.innerHTML = "";
+
+            selectedFiles.forEach((file, index) => {
+
+                if (!file.type.startsWith("image/")) {
+                    return;
+                }
+
+                const reader =
+                    new FileReader();
+
+                reader.onload = function (event) {
+
+                    const column =
+                        document.createElement("div");
+
+                    column.className =
+                        "col-sm-6 col-md-4";
+
+                    column.innerHTML = `
+                        <div class="border rounded overflow-hidden position-relative">
+
+                            <img src="${event.target.result}"
+                                 class="w-100"
+                                 style="height:150px;object-fit:cover;"
+                                 alt="Selected photo" />
+
+                            <button type="button"
+                                    class="btn btn-sm btn-dark position-absolute top-0 end-0 m-2 remove-photo"
+                                    data-index="${index}">
+                                ×
+                            </button>
+
+                            <div class="p-2 small text-muted text-truncate">
+                                ${file.name}
+                            </div>
+
+                        </div>
+                    `;
+
+                    photoPreview.appendChild(column);
+
+                };
+
+                reader.readAsDataURL(file);
+
+            });
+
+        }
+
+        photoPreview.addEventListener("click", function (event) {
+
+            const button =
+                event.target.closest(".remove-photo");
+
+            if (!button) {
+                return;
+            }
+
+            const index =
+                Number(button.dataset.index);
+
+            selectedFiles.splice(index, 1);
+
+            updateInputFiles();
+            renderPreviews();
+
+            photoSelectionError.style.display = "none";
+            photoSelectionError.textContent = "";
+
+        });
+
+    </script>
+}

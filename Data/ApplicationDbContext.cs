@@ -23,6 +23,9 @@ public class ApplicationDbContext
     public DbSet<ComplaintUpdate> ComplaintUpdates
         => Set<ComplaintUpdate>();
 
+    public DbSet<ComplaintPhoto> ComplaintPhotos
+        => Set<ComplaintPhoto>();
+
     protected override void OnModelCreating(
         ModelBuilder modelBuilder)
     {
@@ -41,18 +44,6 @@ public class ApplicationDbContext
             .IsUnique();
 
         modelBuilder.Entity<Complaint>()
-            .HasIndex(c => c.StudentId);
-
-        modelBuilder.Entity<Complaint>()
-            .HasIndex(c => c.AssignedToId);
-
-        modelBuilder.Entity<Complaint>()
-            .HasIndex(c => c.Hall);
-
-        modelBuilder.Entity<ComplaintUpdate>()
-            .HasIndex(u => u.ComplaintId);
-
-        modelBuilder.Entity<Complaint>()
             .HasOne(c => c.Student)
             .WithMany()
             .HasForeignKey(c => c.StudentId)
@@ -63,6 +54,12 @@ public class ApplicationDbContext
             .WithMany(u => u.AssignedComplaints)
             .HasForeignKey(c => c.AssignedToId)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Complaint>()
+            .HasMany(c => c.Photos)
+            .WithOne(p => p.Complaint)
+            .HasForeignKey(p => p.ComplaintId)
+            .OnDelete(DeleteBehavior.Cascade);
 
         modelBuilder.Entity<ComplaintUpdate>()
             .HasOne(u => u.Complaint)
@@ -75,5 +72,17 @@ public class ApplicationDbContext
             .WithMany()
             .HasForeignKey(u => u.UpdatedById)
             .OnDelete(DeleteBehavior.Restrict);
+
+        modelBuilder.Entity<Complaint>()
+            .HasIndex(c => new { c.StudentId, c.DateCreated });
+
+        modelBuilder.Entity<Complaint>()
+            .HasIndex(c => new { c.AssignedToId, c.DateCreated });
+
+        modelBuilder.Entity<Complaint>()
+            .HasIndex(c => new { c.Hall, c.DateCreated });
+
+        modelBuilder.Entity<ComplaintUpdate>()
+            .HasIndex(u => new { u.ComplaintId, u.Timestamp });
     }
 }

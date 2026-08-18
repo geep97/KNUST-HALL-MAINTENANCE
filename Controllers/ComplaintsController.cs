@@ -22,6 +22,7 @@ public class ComplaintsController : Controller
     };
 
     private const long MaxPhotoSize = 5 * 1024 * 1024;
+    private const int MaxPhotoCount = 5;
 
     public ComplaintsController(
         IComplaintService service,
@@ -67,6 +68,8 @@ public class ComplaintsController : Controller
     public async Task<IActionResult> Create(
         ComplaintCreateViewModel model)
     {
+        var savedFiles = new List<string>();
+
         try
         {
             var hall = CurrentStudentHall;
@@ -75,12 +78,63 @@ public class ComplaintsController : Controller
             model.Hall = hall;
             model.RoomNumber = roomNumber;
 
-            IFormFile? uploadedPhoto = null;
+            var uploadedPhotos = new List<IFormFile>();
 
             if (Request.HasFormContentType)
             {
                 var form = await Request.ReadFormAsync();
-                uploadedPhoto = form.Files["Photo"];
+
+                uploadedPhotos =
+                    form.Files
+                        .Where(f =>
+                            string.Equals(
+                                f.Name,
+                                "Photos",
+                                StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+            }
+
+            if (uploadedPhotos.Count > MaxPhotoCount)
+            {
+                ModelState.AddModelError(
+                    "Photos",
+                    $"You can upload a maximum of {MaxPhotoCount} photos."
+                );
+            }
+
+            foreach (var photo in uploadedPhotos)
+            {
+                if (photo.Length <= 0)
+                {
+                    ModelState.AddModelError(
+                        "Photos",
+                        "One of the selected files is empty."
+                    );
+
+                    continue;
+                }
+
+                if (photo.Length > MaxPhotoSize)
+                {
+                    ModelState.AddModelError(
+                        "Photos",
+                        $"{photo.FileName} is larger than 5 MB."
+                    );
+
+                    continue;
+                }
+
+                var extension =
+                    Path.GetExtension(photo.FileName)
+                        .ToLowerInvariant();
+
+                if (!AllowedExtensions.Contains(extension))
+                {
+                    ModelState.AddModelError(
+                        "Photos",
+                        $"{photo.FileName} is not a supported image type."
+                    );
+                }
             }
 
             if (!ModelState.IsValid)
@@ -88,41 +142,21 @@ public class ComplaintsController : Controller
                 return View(model);
             }
 
-            string? photoPath = null;
+            var uploadsDirectory =
+                Path.Combine(
+                    _env.WebRootPath,
+                    "uploads"
+                );
 
-            if (uploadedPhoto != null &&
-                uploadedPhoto.Length > 0)
+            Directory.CreateDirectory(uploadsDirectory);
+
+            var photoPaths = new List<string>();
+
+            foreach (var photo in uploadedPhotos)
             {
-                if (uploadedPhoto.Length > MaxPhotoSize)
-                {
-                    ModelState.AddModelError(
-                        "Photo",
-                        "The photo must be 5 MB or smaller.");
-
-                    return View(model);
-                }
-
                 var extension =
-                    Path.GetExtension(
-                        uploadedPhoto.FileName)
-                    .ToLowerInvariant();
-
-                if (!AllowedExtensions.Contains(extension))
-                {
-                    ModelState.AddModelError(
-                        "Photo",
-                        "Only JPG, JPEG, PNG and WEBP images are allowed.");
-
-                    return View(model);
-                }
-
-                var uploadsDirectory =
-                    Path.Combine(
-                        _env.WebRootPath,
-                        "uploads");
-
-                Directory.CreateDirectory(
-                    uploadsDirectory);
+                    Path.GetExtension(photo.FileName)
+                        .ToLowerInvariant();
 
                 var fileName =
                     $"{Guid.NewGuid():N}{extension}";
@@ -130,7 +164,8 @@ public class ComplaintsController : Controller
                 var filePath =
                     Path.Combine(
                         uploadsDirectory,
-                        fileName);
+                        fileName
+                    );
 
                 await using (
                     var stream = new FileStream(
@@ -139,11 +174,14 @@ public class ComplaintsController : Controller
                         FileAccess.Write,
                         FileShare.None))
                 {
-                    await uploadedPhoto.CopyToAsync(stream);
+                    await photo.CopyToAsync(stream);
                 }
 
-                photoPath =
+                var photoPath =
                     $"/uploads/{fileName}";
+
+                savedFiles.Add(filePath);
+                photoPaths.Add(photoPath);
             }
 
             var complaint = new Complaint
@@ -153,19 +191,46 @@ public class ComplaintsController : Controller
                 Description = model.Description,
                 Hall = hall,
                 RoomNumber = roomNumber,
-                PhotoPath = photoPath
+                PhotoPath = photoPaths.FirstOrDefault()
             };
+
+            foreach (var photoPath in photoPaths)
+            {
+                complaint.Photos.Add(
+                    new ComplaintPhoto
+                    {
+                        PhotoPath = photoPath,
+                        UploadedAt = DateTime.Now
+                    }
+                );
+            }
 
             await _service.CreateAsync(complaint);
 
             return RedirectToAction(
-                nameof(MyComplaints));
+                nameof(MyComplaints)
+            );
         }
         catch
         {
+            foreach (var filePath in savedFiles)
+            {
+                try
+                {
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        System.IO.File.Delete(filePath);
+                    }
+                }
+                catch
+                {
+                }
+            }
+
             ModelState.AddModelError(
                 "",
-                "There was a problem submitting the request.");
+                "There was a problem submitting the request."
+            );
 
             model.Hall = CurrentStudentHall;
             model.RoomNumber = CurrentStudentRoom;
@@ -213,6 +278,7 @@ public class ComplaintsController : Controller
 
         return RedirectToAction(
             nameof(Details),
-            new { id = complaintId });
+            new { id = complaintId }
+        );
     }
 }

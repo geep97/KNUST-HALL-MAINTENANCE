@@ -37,8 +37,6 @@
     </div>
 </div>
 
-
-
 <div class="row g-4">
 
     <div class="col-lg-7">
@@ -57,16 +55,51 @@
                 @Model.Description
             </div>
 
-            @if (!string.IsNullOrEmpty(Model.PhotoPath))
+            @if (Model.Photos != null && Model.Photos.Any())
             {
-                <div class="detail-label">
+                <div class="detail-label mt-4">
+                    Attached photos
+                </div>
+
+                <div class="row g-3">
+
+                    @foreach (var photo in Model.Photos.OrderBy(p => p.UploadedAt))
+                    {
+                        <div class="col-sm-6">
+
+                            <a href="@photo.PhotoPath"
+                               target="_blank"
+                               rel="noopener noreferrer"
+                               class="d-block">
+
+                                <img src="@photo.PhotoPath"
+                                     class="img-fluid rounded border w-100"
+                                     style="height:220px; object-fit:cover;"
+                                     alt="Maintenance issue photo" />
+
+                            </a>
+
+                        </div>
+                    }
+
+                </div>
+            }
+            else if (!string.IsNullOrEmpty(Model.PhotoPath))
+            {
+                <div class="detail-label mt-4">
                     Attached photo
                 </div>
 
-                <img src="@Model.PhotoPath"
-                     class="img-fluid rounded border mb-2"
-                     style="max-height:340px;"
-                     alt="Maintenance issue photo" />
+                <a href="@Model.PhotoPath"
+                   target="_blank"
+                   rel="noopener noreferrer">
+
+                    <img src="@Model.PhotoPath"
+                         class="img-fluid rounded border mb-2"
+                         style="max-height:340px;"
+                         alt="Maintenance issue photo" />
+
+                </a>
             }
 
             <div class="row mt-3">
