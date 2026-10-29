@@ -34,4 +34,10 @@ public interface IComplaintService
         ComplaintStatus status,
         string? note,
         int updatedById);
+
+    Task<bool> ConfirmResolutionAsync(
+        int complaintId,
+        int studentId,
+        bool confirmed,
+        string? note);
 }

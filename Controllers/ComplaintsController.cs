@@ -22,7 +22,7 @@ public class ComplaintsController : Controller
     };
 
     private const long MaxPhotoSize = 5 * 1024 * 1024;
-
+    private const int MaxPhotoCount = 5;
 
     public ComplaintsController(
         IComplaintService service,
@@ -32,28 +32,16 @@ public class ComplaintsController : Controller
         _env = env;
     }
 
-
-    // =========================================================
-    // CURRENT STUDENT
-    // =========================================================
-
     private int CurrentUserId =>
         int.Parse(
             User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
 
-
     private string CurrentStudentHall =>
         User.FindFirstValue("Hall") ?? string.Empty;
 
-
     private string CurrentStudentRoom =>
         User.FindFirstValue("RoomNumber") ?? string.Empty;
-
-
-    // =========================================================
-    // MY COMPLAINTS
-    // =========================================================
 
     public async Task<IActionResult> MyComplaints()
     {
@@ -62,11 +50,6 @@ public class ComplaintsController : Controller
 
         return View(complaints);
     }
-
-
-    // =========================================================
-    // CREATE - GET
-    // =========================================================
 
     [HttpGet]
     public IActionResult Create()
@@ -80,163 +63,103 @@ public class ComplaintsController : Controller
         return View(model);
     }
 
-
-    // =========================================================
-    // CREATE - POST
-    // =========================================================
-
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Create(
         ComplaintCreateViewModel model)
     {
-        Console.WriteLine("================================");
-        Console.WriteLine("CREATE REQUEST RECEIVED");
-        Console.WriteLine("================================");
-
+        var savedFiles = new List<string>();
 
         try
         {
-            // -------------------------------------------------
-            // GET HALL AND ROOM FROM AUTHENTICATED STUDENT
-            // -------------------------------------------------
-
             var hall = CurrentStudentHall;
             var roomNumber = CurrentStudentRoom;
-
-
-            // -------------------------------------------------
-            // IMPORTANT:
-            // Never trust Hall or RoomNumber submitted by the
-            // browser. The student's account is the source
-            // of truth.
-            // -------------------------------------------------
 
             model.Hall = hall;
             model.RoomNumber = roomNumber;
 
-
-            // -------------------------------------------------
-            // READ PHOTO
-            // -------------------------------------------------
-
-            IFormFile? uploadedPhoto = null;
-
+            var uploadedPhotos = new List<IFormFile>();
 
             if (Request.HasFormContentType)
             {
                 var form = await Request.ReadFormAsync();
 
-                uploadedPhoto = form.Files["Photo"];
+                uploadedPhotos =
+                    form.Files
+                        .Where(f =>
+                            string.Equals(
+                                f.Name,
+                                "Photos",
+                                StringComparison.OrdinalIgnoreCase))
+                        .ToList();
+            }
 
-                Console.WriteLine(
-                    $"Files received: {form.Files.Count}"
+            if (uploadedPhotos.Count > MaxPhotoCount)
+            {
+                ModelState.AddModelError(
+                    "Photos",
+                    $"You can upload a maximum of {MaxPhotoCount} photos."
                 );
             }
 
-
-            // -------------------------------------------------
-            // VALIDATE
-            // -------------------------------------------------
-
-            if (!ModelState.IsValid)
+            foreach (var photo in uploadedPhotos)
             {
-                Console.WriteLine("ModelState is invalid.");
-
-                return View(model);
-            }
-
-
-            // -------------------------------------------------
-            // PHOTO
-            // -------------------------------------------------
-
-            string? photoPath = null;
-
-
-            if (
-                uploadedPhoto != null &&
-                uploadedPhoto.Length > 0
-            )
-            {
-                Console.WriteLine(
-                    $"Photo received: {uploadedPhoto.FileName}"
-                );
-
-                Console.WriteLine(
-                    $"Photo size: {uploadedPhoto.Length} bytes"
-                );
-
-
-                // ---------------------------------------------
-                // SIZE
-                // ---------------------------------------------
-
-                if (uploadedPhoto.Length > MaxPhotoSize)
+                if (photo.Length <= 0)
                 {
                     ModelState.AddModelError(
-                        "Photo",
-                        "The photo must be 5 MB or smaller."
+                        "Photos",
+                        "One of the selected files is empty."
                     );
 
-                    return View(model);
+                    continue;
                 }
 
+                if (photo.Length > MaxPhotoSize)
+                {
+                    ModelState.AddModelError(
+                        "Photos",
+                        $"{photo.FileName} is larger than 5 MB."
+                    );
 
-                // ---------------------------------------------
-                // EXTENSION
-                // ---------------------------------------------
+                    continue;
+                }
 
                 var extension =
-                    Path.GetExtension(
-                        uploadedPhoto.FileName
-                    ).ToLowerInvariant();
-
-
-                Console.WriteLine(
-                    $"Extension: {extension}"
-                );
-
+                    Path.GetExtension(photo.FileName)
+                        .ToLowerInvariant();
 
                 if (!AllowedExtensions.Contains(extension))
                 {
                     ModelState.AddModelError(
-                        "Photo",
-                        "Only JPG, JPEG, PNG and WEBP images are allowed."
+                        "Photos",
+                        $"{photo.FileName} is not a supported image type."
                     );
-
-                    return View(model);
                 }
+            }
 
+            if (!ModelState.IsValid)
+            {
+                return View(model);
+            }
 
-                // ---------------------------------------------
-                // UPLOAD DIRECTORY
-                // ---------------------------------------------
-
-                var uploadsDirectory =
-                    Path.Combine(
-                        _env.WebRootPath,
-                        "uploads"
-                    );
-
-
-                Directory.CreateDirectory(
-                    uploadsDirectory
+            var uploadsDirectory =
+                Path.Combine(
+                    _env.WebRootPath,
+                    "uploads"
                 );
 
+            Directory.CreateDirectory(uploadsDirectory);
 
-                Console.WriteLine(
-                    $"Upload directory: {uploadsDirectory}"
-                );
+            var photoPaths = new List<string>();
 
-
-                // ---------------------------------------------
-                // SAFE FILE NAME
-                // ---------------------------------------------
+            foreach (var photo in uploadedPhotos)
+            {
+                var extension =
+                    Path.GetExtension(photo.FileName)
+                        .ToLowerInvariant();
 
                 var fileName =
                     $"{Guid.NewGuid():N}{extension}";
-
 
                 var filePath =
                     Path.Combine(
@@ -244,136 +167,118 @@ public class ComplaintsController : Controller
                         fileName
                     );
 
-
-                Console.WriteLine(
-                    $"Saving to: {filePath}"
-                );
-
-
-                // ---------------------------------------------
-                // SAVE FILE
-                // ---------------------------------------------
-
                 await using (
                     var stream = new FileStream(
                         filePath,
                         FileMode.CreateNew,
                         FileAccess.Write,
-                        FileShare.None
-                    ))
+                        FileShare.None))
                 {
-                    await uploadedPhoto.CopyToAsync(stream);
+                    await photo.CopyToAsync(stream);
                 }
 
-
-                photoPath =
+                var photoPath =
                     $"/uploads/{fileName}";
 
-
-                Console.WriteLine(
-                    $"Photo saved successfully: {photoPath}"
-                );
+                savedFiles.Add(filePath);
+                photoPaths.Add(photoPath);
             }
-            else
-            {
-                Console.WriteLine(
-                    "No photo uploaded."
-                );
-            }
-
-
-            // -------------------------------------------------
-            // CREATE COMPLAINT
-            // -------------------------------------------------
 
             var complaint = new Complaint
             {
                 StudentId = CurrentUserId,
-
                 Category = model.Category,
-
                 Description = model.Description,
-
-                // IMPORTANT:
-                // These come from the authenticated student,
-                // NOT from the submitted form.
                 Hall = hall,
-
                 RoomNumber = roomNumber,
-
-                PhotoPath = photoPath
+                PhotoPath = photoPaths.FirstOrDefault()
             };
 
+            foreach (var photoPath in photoPaths)
+            {
+                complaint.Photos.Add(
+                    new ComplaintPhoto
+                    {
+                        PhotoPath = photoPath,
+                        UploadedAt = DateTime.Now
+                    }
+                );
+            }
 
-            // -------------------------------------------------
-            // SAVE COMPLAINT
-            // -------------------------------------------------
-
-            Console.WriteLine(
-                "Saving complaint..."
-            );
-
-
-            await _service.CreateAsync(
-                complaint
-            );
-
-
-            Console.WriteLine(
-                $"Complaint saved. ID: {complaint.Id}"
-            );
-
+            await _service.CreateAsync(complaint);
 
             return RedirectToAction(
                 nameof(MyComplaints)
             );
         }
-        catch (Exception ex)
+        catch
         {
-            Console.WriteLine("");
-            Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            Console.WriteLine("UPLOAD / COMPLAINT ERROR");
-            Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-            Console.WriteLine(ex.ToString());
-            Console.WriteLine("!!!!!!!!!!!!!!!!!!!!!!!!!!!!");
-
+            foreach (var filePath in savedFiles)
+            {
+                try
+                {
+                    if (System.IO.File.Exists(filePath))
+                    {
+                        System.IO.File.Delete(filePath);
+                    }
+                }
+                catch
+                {
+                }
+            }
 
             ModelState.AddModelError(
                 "",
                 "There was a problem submitting the request."
             );
 
-
-            // Make sure the values are still available
-            // if the form needs to be displayed again.
             model.Hall = CurrentStudentHall;
             model.RoomNumber = CurrentStudentRoom;
-
 
             return View(model);
         }
     }
-
-
-    // =========================================================
-    // DETAILS
-    // =========================================================
 
     public async Task<IActionResult> Details(int id)
     {
         var complaint =
             await _service.GetByIdAsync(id);
 
-
-        if (
-            complaint == null ||
-            complaint.StudentId != CurrentUserId
-        )
+        if (complaint == null ||
+            complaint.StudentId != CurrentUserId)
         {
             return NotFound();
         }
 
-
         return View(complaint);
+    }
+
+    [HttpPost]
+    [ValidateAntiForgeryToken]
+    public async Task<IActionResult> ConfirmResolution(
+        int complaintId,
+        bool confirmed,
+        string? note)
+    {
+        var success =
+            await _service.ConfirmResolutionAsync(
+                complaintId,
+                CurrentUserId,
+                confirmed,
+                note);
+
+        if (!success)
+        {
+            return NotFound();
+        }
+
+        TempData["Success"] = confirmed
+            ? "Thank you. The maintenance request has been confirmed as resolved."
+            : "The request has been reopened and sent back to the maintenance team.";
+
+        return RedirectToAction(
+            nameof(Details),
+            new { id = complaintId }
+        );
     }
 }

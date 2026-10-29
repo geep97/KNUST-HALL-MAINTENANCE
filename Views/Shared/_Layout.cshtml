@@ -4,6 +4,8 @@
 @{
     var role = User.FindFirstValue(ClaimTypes.Role);
 
+    var hall = User.FindFirstValue("Hall");
+
     var currentController =
         ViewContext.RouteData.Values["controller"]?.ToString();
 
@@ -60,6 +62,7 @@
     </div>
 
 
+
     <!-- =========================================================
          BRANDING HEADER
          ========================================================= -->
@@ -95,6 +98,7 @@
     </header>
 
 
+
     <!-- =========================================================
          NAVIGATION
          ========================================================= -->
@@ -119,6 +123,7 @@
                     <span class="navbar-toggler-icon"></span>
 
                 </button>
+
 
 
                 <div class="collapse navbar-collapse"
@@ -150,6 +155,7 @@
                     }
 
 
+
                     <!-- =================================================
                          HALL STAFF NAVIGATION
                          ================================================= -->
@@ -164,7 +170,7 @@
                                    asp-controller="Staff"
                                    asp-action="Index">
 
-                                    Maintenance Requests
+                                    @hall · Maintenance Requests
 
                                 </a>
 
@@ -173,6 +179,7 @@
                         </ul>
 
                     }
+
 
 
                     <!-- =================================================
@@ -189,7 +196,7 @@
                                    asp-controller="Staff"
                                    asp-action="Index">
 
-                                    My Work Orders
+                                    @hall · My Work Orders
 
                                 </a>
 
@@ -198,6 +205,7 @@
                         </ul>
 
                     }
+
 
 
                     <!-- =================================================
@@ -225,6 +233,7 @@
                     }
 
 
+
                     <!-- =================================================
                          USER INFORMATION
                          ================================================= -->
@@ -235,11 +244,32 @@
 
                             @User.Identity?.Name
 
+
+                            @if (
+                                (role == nameof(UserRole.HallStaff) ||
+                                 role == nameof(UserRole.Maintenance))
+                                &&
+                                !string.IsNullOrWhiteSpace(hall)
+                            )
+                            {
+
+                                <span class="opacity-75">
+
+                                    · @hall
+
+                                </span>
+
+                            }
+
+
                             <span class="opacity-75">
+
                                 · @role
+
                             </span>
 
                         </span>
+
 
 
                         <!-- LOGOUT -->
@@ -262,6 +292,7 @@
 
                     </div>
 
+
                 </div>
 
             </div>
@@ -269,6 +300,7 @@
         </nav>
 
     }
+
 
 
     <!-- =========================================================
@@ -293,6 +325,7 @@
             }
 
 
+
             <!-- ERROR MESSAGE -->
             @if (TempData["Error"] != null)
             {
@@ -306,11 +339,13 @@
             }
 
 
+
             @RenderBody()
 
         </div>
 
     </main>
+
 
 
     <!-- =========================================================
@@ -322,16 +357,21 @@
         <div class="container d-flex justify-content-between flex-wrap gap-2">
 
             <span>
+
                 KNUST Hall Maintenance Portal
+
             </span>
 
             <span>
+
                 Facilities &amp; Maintenance Operations
+
             </span>
 
         </div>
 
     </footer>
+
 
 
     <!-- =========================================================
@@ -343,6 +383,7 @@
 
 
     @await RenderSectionAsync("Scripts", required: false)
+
 
 </body>
 

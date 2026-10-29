@@ -1,0 +1,333 @@
+﻿@model KnustHallMaintenance.Models.ViewModels.AdminEditUserViewModel
+
+@using KnustHallMaintenance.Models
+
+@{
+    ViewData["Title"] = "Edit User";
+}
+
+<div class="page-header">
+
+    <div class="eyebrow">
+        Administration
+    </div>
+
+    <h2>
+        Edit User
+    </h2>
+
+    <p>
+        Update this user's role, hall assignment, specialization or account status.
+    </p>
+
+</div>
+
+
+<div class="row g-4">
+
+    <div class="col-lg-8">
+
+        <div class="card-soft p-4">
+
+            <div class="section-title mb-4">
+                User information
+            </div>
+
+
+            <form asp-controller="Admin"
+                  asp-action="EditUser"
+                  method="post">
+
+                @Html.AntiForgeryToken()
+
+                <input asp-for="Id"
+                       type="hidden" />
+
+
+                <!-- NAME -->
+
+                <div class="mb-3">
+
+                    <label asp-for="FullName"
+                           class="form-label">
+                        Full name
+                    </label>
+
+                    <input asp-for="FullName"
+                           class="form-control" />
+
+                    <span asp-validation-for="FullName"
+                          class="text-danger small">
+                    </span>
+
+                </div>
+
+
+                <!-- EMAIL -->
+
+                <div class="mb-3">
+
+                    <label asp-for="Email"
+                           class="form-label">
+                        Email
+                    </label>
+
+                    <input asp-for="Email"
+                           class="form-control" />
+
+                    <span asp-validation-for="Email"
+                          class="text-danger small">
+                    </span>
+
+                </div>
+
+
+                <!-- ROLE -->
+
+                <div class="mb-3">
+
+                    <label asp-for="Role"
+                           class="form-label">
+                        Role
+                    </label>
+
+                    <select asp-for="Role"
+                            class="form-select"
+                            id="roleSelect">
+
+                        <option value="@UserRole.HallStaff">
+                            Hall Staff
+                        </option>
+
+                        <option value="@UserRole.Maintenance">
+                            Maintenance
+                        </option>
+
+                        <option value="@UserRole.Admin">
+                            Administrator
+                        </option>
+
+                    </select>
+
+                    <span asp-validation-for="Role"
+                          class="text-danger small">
+                    </span>
+
+                </div>
+
+
+                <!-- HALL -->
+
+                <div class="mb-3"
+                     id="hallField">
+
+                    <label asp-for="Hall"
+                           class="form-label">
+                        Hall
+                    </label>
+
+                    <select asp-for="Hall"
+                            class="form-select">
+
+                        <option value="">
+                            Select hall
+                        </option>
+
+                        @foreach (var hall in (List<string>)ViewBag.Halls)
+                        {
+                            <option value="@hall">
+                                @hall
+                            </option>
+                        }
+
+                    </select>
+
+                    <span asp-validation-for="Hall"
+                          class="text-danger small">
+                    </span>
+
+                </div>
+
+
+                <!-- SPECIALIZATION -->
+
+                <div class="mb-4"
+                     id="specializationField">
+
+                    <label asp-for="MaintenanceSpecialization"
+                           class="form-label">
+                        Maintenance specialization
+                    </label>
+
+                    <select asp-for="MaintenanceSpecialization"
+                            class="form-select">
+
+                        <option value="">
+                            Select specialization
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.Electrical">
+                            Electrical
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.Plumbing">
+                            Plumbing
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.Carpentry">
+                            Carpentry
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.Masonry">
+                            Masonry
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.Painting">
+                            Painting
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.GeneralMaintenance">
+                            General Maintenance
+                        </option>
+
+                    </select>
+
+                    <span asp-validation-for="MaintenanceSpecialization"
+                          class="text-danger small">
+                    </span>
+
+                </div>
+
+
+                <!-- ACTIVE -->
+
+                <div class="form-check mb-4">
+
+                    <input asp-for="IsActive"
+                           class="form-check-input"
+                           type="checkbox" />
+
+                    <label asp-for="IsActive"
+                           class="form-check-label">
+                        Account is active
+                    </label>
+
+                </div>
+
+
+                <!-- BUTTONS -->
+
+                <div class="d-flex gap-2">
+
+                    <button type="submit"
+                            class="btn btn-knust">
+                        Save Changes
+                    </button>
+
+                    <a asp-controller="Admin"
+                       asp-action="Index"
+                       class="btn btn-outline-secondary">
+                        Cancel
+                    </a>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+
+    <div class="col-lg-4">
+
+        <div class="card-soft p-4">
+
+            <div class="section-title mb-3">
+                About account changes
+            </div>
+
+            <div class="small text-muted">
+
+                <p>
+                    Changing a worker's hall immediately changes
+                    the hall they belong to for future operations.
+                </p>
+
+                <p>
+                    Changing a maintenance worker's specialization
+                    changes the type of work they can be selected for.
+                </p>
+
+                <p class="mb-0">
+                    Deactivating an account preserves its historical
+                    records while preventing the account from being
+                    used as an active worker.
+                </p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+</div>
+
+
+@section Scripts {
+
+    <script>
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            const roleSelect =
+                document.getElementById("roleSelect");
+
+            const hallField =
+                document.getElementById("hallField");
+
+            const specializationField =
+                document.getElementById("specializationField");
+
+
+            function updateFields() {
+
+                const role =
+                    roleSelect.value;
+
+
+                if (
+                    role === "@UserRole.HallStaff" ||
+                    role === "@UserRole.Maintenance"
+                ) {
+                    hallField.style.display = "block";
+                }
+                else {
+                    hallField.style.display = "none";
+                }
+
+
+                if (
+                    role === "@UserRole.Maintenance"
+                ) {
+                    specializationField.style.display = "block";
+                }
+                else {
+                    specializationField.style.display = "none";
+                }
+
+            }
+
+
+            roleSelect.addEventListener(
+                "change",
+                updateFields
+            );
+
+
+            updateFields();
+
+        });
+
+    </script>
+}

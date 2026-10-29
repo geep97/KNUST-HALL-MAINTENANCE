@@ -1,41 +1,34 @@
-using System.Security.Claims;
 using KnustHallMaintenance.Models;
 using KnustHallMaintenance.Models.ViewModels;
 using KnustHallMaintenance.Services;
 using Microsoft.AspNetCore.Authentication;
-using Microsoft.AspNetCore.Authentication.Cookies;
+using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Mvc;
+using System.Security.Claims;
 
 namespace KnustHallMaintenance.Controllers;
 
 public class AccountController : Controller
 {
-    private readonly IUserService _userService;
     private readonly IStudentService _studentService;
+    private readonly SignInManager<ApplicationUser> _signInManager;
+    private readonly UserManager<ApplicationUser> _userManager;
 
     public AccountController(
-        IUserService userService,
-        IStudentService studentService)
+        IStudentService studentService,
+        SignInManager<ApplicationUser> signInManager,
+        UserManager<ApplicationUser> userManager)
     {
-        _userService = userService;
         _studentService = studentService;
+        _signInManager = signInManager;
+        _userManager = userManager;
     }
-
-
-    // =========================================================
-    // LOGIN - GET
-    // =========================================================
 
     [HttpGet]
     public IActionResult Login()
     {
         return View(new LoginViewModel());
     }
-
-
-    // =========================================================
-    // LOGIN - POST
-    // =========================================================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -47,18 +40,13 @@ public class AccountController : Controller
             return View(model);
         }
 
-
-        // =====================================================
-        // STUDENT LOGIN
-        // =====================================================
-
         if (LooksLikeStudentId(model.EmailOrStudentId))
         {
             var student =
-                await _studentService.GetByStudentIdAsync(
-                    model.EmailOrStudentId.Trim()
-                );
-
+                await _studentService
+                    .GetByStudentIdAsync(
+                        model.EmailOrStudentId.Trim()
+                    );
 
             if (
                 student == null ||
@@ -74,73 +62,65 @@ public class AccountController : Controller
                 return View(model);
             }
 
+            var studentClaims =
+                new List<Claim>
+                {
+                    new(
+                        ClaimTypes.NameIdentifier,
+                        student.Id.ToString()
+                    ),
 
-            // =================================================
-            // STUDENT CLAIMS
-            // =================================================
+                    new(
+                        ClaimTypes.Name,
+                        student.FullName
+                    ),
 
-            var studentClaims = new List<Claim>
-            {
-                new(
-                    ClaimTypes.NameIdentifier,
-                    student.Id.ToString()
-                ),
+                    new(
+                        ClaimTypes.Email,
+                        student.Email
+                    ),
 
-                new(
-                    ClaimTypes.Name,
-                    student.FullName
-                ),
+                    new(
+                        ClaimTypes.Role,
+                        "Student"
+                    ),
 
-                new(
-                    ClaimTypes.Email,
-                    student.Email
-                ),
+                    new(
+                        "StudentId",
+                        student.StudentId
+                    ),
 
-                new(
-                    ClaimTypes.Role,
-                    "Student"
-                ),
+                    new(
+                        "Hall",
+                        student.Hall
+                    ),
 
-                new(
-                    "StudentId",
-                    student.StudentId
-                ),
+                    new(
+                        "RoomNumber",
+                        student.RoomNumber
+                    ),
 
-                new(
-                    "Hall",
-                    student.Hall
-                ),
-
-                new(
-                    "RoomNumber",
-                    student.RoomNumber
-                ),
-
-                new(
-                    "Programme",
-                    student.Programme
-                )
-            };
-
+                    new(
+                        "Programme",
+                        student.Programme
+                    )
+                };
 
             var studentIdentity =
                 new ClaimsIdentity(
                     studentClaims,
-                    CookieAuthenticationDefaults.AuthenticationScheme
+                    IdentityConstants.ApplicationScheme
                 );
-
 
             var studentPrincipal =
                 new ClaimsPrincipal(
                     studentIdentity
                 );
 
-
             await HttpContext.SignInAsync(
-                CookieAuthenticationDefaults.AuthenticationScheme,
+                IdentityConstants.ApplicationScheme,
                 studentPrincipal
             );
-
 
             return RedirectToAction(
                 "MyComplaints",
@@ -148,25 +128,13 @@ public class AccountController : Controller
             );
         }
 
-
-        // =====================================================
-        // PORTAL USER LOGIN
-        // Admin / Hall Staff / Maintenance
-        // =====================================================
-
         var user =
-            await _userService.GetByEmailAsync(
-                model.EmailOrStudentId.Trim()
-            );
+            await _userManager
+                .FindByEmailAsync(
+                    model.EmailOrStudentId.Trim()
+                );
 
-
-        if (
-            user == null ||
-            !_userService.VerifyPassword(
-                user,
-                model.Password
-            )
-        )
+        if (user == null)
         {
             model.ErrorMessage =
                 "Invalid email or password.";
@@ -174,90 +142,54 @@ public class AccountController : Controller
             return View(model);
         }
 
-
-        // =====================================================
-        // PORTAL USER CLAIMS
-        // =====================================================
-
-        var claims = new List<Claim>
+        if (!user.IsActive)
         {
-            new(
-                ClaimTypes.NameIdentifier,
-                user.Id.ToString()
-            ),
+            model.ErrorMessage =
+                "This account has been deactivated. Please contact the administrator.";
 
-            new(
-                ClaimTypes.Name,
-                user.FullName
-            ),
+            return View(model);
+        }
 
-            new(
-                ClaimTypes.Email,
-                user.Email
-            ),
+        var result =
+            await _signInManager
+                .PasswordSignInAsync(
+                    user,
+                    model.Password,
+                    isPersistent: false,
+                    lockoutOnFailure: false
+                );
 
-            new(
-                ClaimTypes.Role,
-                user.Role.ToString()
-            ),
+        if (result.Succeeded)
+        {
+            var roles =
+                await _userManager
+                    .GetRolesAsync(user);
 
-            // =================================================
-            // HALL CLAIM
-            // =================================================
-            //
-            // Hall Staff and Maintenance users have a hall.
-            //
-            // Admin users normally have no hall, so an empty
-            // claim is stored for them.
-            //
-            new(
-                "Hall",
-                user.Hall ?? ""
-            )
-        };
+            var role =
+                roles.FirstOrDefault();
 
+            return RedirectAfterLogin(role);
+        }
 
-        var identity =
-            new ClaimsIdentity(
-                claims,
-                CookieAuthenticationDefaults.AuthenticationScheme
-            );
+        if (result.IsLockedOut)
+        {
+            model.ErrorMessage =
+                "This account is temporarily locked.";
 
+            return View(model);
+        }
 
-        var principal =
-            new ClaimsPrincipal(identity);
+        model.ErrorMessage =
+            "Invalid email or password.";
 
-
-        await HttpContext.SignInAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme,
-            principal
-        );
-
-
-        return RedirectAfterLogin(
-            user.Role
-        );
+        return View(model);
     }
-
-
-    // =========================================================
-    // LOGOUT
-    // =========================================================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
     public async Task<IActionResult> Logout()
     {
-        await HttpContext.SignOutAsync(
-            CookieAuthenticationDefaults.AuthenticationScheme
-        );
-
-
-        // Explicitly remove the authentication cookie.
-        Response.Cookies.Delete(
-            ".AspNetCore.Cookies"
-        );
-
+        await _signInManager.SignOutAsync();
 
         return RedirectToAction(
             "Login",
@@ -265,40 +197,11 @@ public class AccountController : Controller
         );
     }
 
-
-    // =========================================================
-    // LOGIN REDIRECTION
-    // =========================================================
-
     private IActionResult RedirectAfterLogin(
-        UserRole? role = null)
+        string? role)
     {
-        var roleClaim =
-            role?.ToString()
-            ?? User.FindFirstValue(
-                ClaimTypes.Role
-            );
-
-
-        // -----------------------------------------------------
-        // Student
-        // -----------------------------------------------------
-
-        if (roleClaim == "Student")
-        {
-            return RedirectToAction(
-                "MyComplaints",
-                "Complaints"
-            );
-        }
-
-
-        // -----------------------------------------------------
-        // Hall Staff
-        // -----------------------------------------------------
-
         if (
-            roleClaim ==
+            role ==
             UserRole.HallStaff.ToString()
         )
         {
@@ -308,13 +211,8 @@ public class AccountController : Controller
             );
         }
 
-
-        // -----------------------------------------------------
-        // Maintenance
-        // -----------------------------------------------------
-
         if (
-            roleClaim ==
+            role ==
             UserRole.Maintenance.ToString()
         )
         {
@@ -324,13 +222,8 @@ public class AccountController : Controller
             );
         }
 
-
-        // -----------------------------------------------------
-        // Admin
-        // -----------------------------------------------------
-
         if (
-            roleClaim ==
+            role ==
             UserRole.Admin.ToString()
         )
         {
@@ -340,21 +233,11 @@ public class AccountController : Controller
             );
         }
 
-
-        // -----------------------------------------------------
-        // Unknown role
-        // -----------------------------------------------------
-
         return RedirectToAction(
             "Login",
             "Account"
         );
     }
-
-
-    // =========================================================
-    // STUDENT ID DETECTION
-    // =========================================================
 
     private static bool LooksLikeStudentId(
         string value)
@@ -363,7 +246,6 @@ public class AccountController : Controller
         {
             return false;
         }
-
 
         return value.Length == 8 &&
                value.All(char.IsDigit);

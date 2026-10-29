@@ -1,18 +1,9 @@
-﻿@model IEnumerable<KnustHallMaintenance.Models.ApplicationUser>
+﻿@model List<KnustHallMaintenance.Models.ViewModels.AdminUserViewModel>
 
 @using KnustHallMaintenance.Models
 
 @{
-    var totalUsers = Model.Count();
-
-    var hallStaffCount =
-        Model.Count(u => u.Role == UserRole.HallStaff);
-
-    var maintenanceCount =
-        Model.Count(u => u.Role == UserRole.Maintenance);
-
-    var adminCount =
-        Model.Count(u => u.Role == UserRole.Admin);
+    ViewData["Title"] = "Admin Dashboard";
 }
 
 <div class="page-header">
@@ -22,158 +13,51 @@
     </div>
 
     <h2>
-        Hall Maintenance Administration
+        User Management
     </h2>
 
     <p>
-        Manage users and access to the hall maintenance portal.
+        Manage hall staff, maintenance personnel and administrator accounts.
     </p>
 
 </div>
 
 
-<!-- =========================================================
-     SUMMARY
-     ========================================================= -->
 
-<div class="row g-3 mb-4">
+<div class="d-flex justify-content-between align-items-center mb-4">
 
-    <!-- TOTAL USERS -->
-
-    <div class="col-md-3">
-
-        <div class="metric-card">
-
-            <div class="metric-label">
-                Total Users
-            </div>
-
-            <div class="metric-value">
-                @totalUsers
-            </div>
-
-            <div class="metric-note">
-                All portal accounts
-            </div>
-
+    <div>
+        <div class="section-title">
+            Portal Users
         </div>
 
-    </div>
-
-
-    <!-- HALL STAFF -->
-
-    <div class="col-md-3">
-
-        <div class="metric-card">
-
-            <div class="metric-label">
-                Hall Staff
-            </div>
-
-            <div class="metric-value">
-                @hallStaffCount
-            </div>
-
-            <div class="metric-note">
-                Hall staff accounts
-            </div>
-
+        <div class="small text-muted">
+            @Model.Count user(s) registered in the system.
         </div>
-
     </div>
 
+    <a asp-controller="Admin"
+       asp-action="CreateUser"
+       class="btn btn-knust">
 
-    <!-- MAINTENANCE -->
+        + Add User
 
-    <div class="col-md-3">
-
-        <div class="metric-card">
-
-            <div class="metric-label">
-                Maintenance
-            </div>
-
-            <div class="metric-value">
-                @maintenanceCount
-            </div>
-
-            <div class="metric-note">
-                Maintenance personnel
-            </div>
-
-        </div>
-
-    </div>
-
-
-    <!-- ADMINISTRATORS -->
-
-    <div class="col-md-3">
-
-        <div class="metric-card">
-
-            <div class="metric-label">
-                Administrators
-            </div>
-
-            <div class="metric-value">
-                @adminCount
-            </div>
-
-            <div class="metric-note">
-                System administrators
-            </div>
-
-        </div>
-
-    </div>
+    </a>
 
 </div>
 
-
-<!-- =========================================================
-     USERS
-     ========================================================= -->
-
 <div class="card-soft">
 
-    <div class="p-4 border-bottom d-flex justify-content-between align-items-center flex-wrap gap-3">
+    <div class="table-responsive">
 
-        <div>
-
-            <div class="section-title">
-                Portal Users
-            </div>
-
-            <div class="small text-muted mt-1">
-                Accounts currently registered in the system.
-            </div>
-
-        </div>
-
-
-        <a asp-controller="Admin"
-           asp-action="CreateUser"
-           class="btn btn-knust">
-
-            + Add User
-
-        </a>
-
-    </div>
-
-
-    <div class="table-shell">
-
-        <table class="table">
+        <table class="table table-hover align-middle mb-0">
 
             <thead>
 
                 <tr>
 
                     <th>
-                        Name
+                        User
                     </th>
 
                     <th>
@@ -189,83 +73,290 @@
                     </th>
 
                     <th>
-                        Room
+                        Specialization
+                    </th>
+
+                    <th>
+                        Status
+                    </th>
+
+                    <th class="text-end">
+                        Actions
                     </th>
 
                 </tr>
 
             </thead>
 
-
             <tbody>
 
-                @foreach (var user in Model)
+                @if (!Model.Any())
                 {
                     <tr>
 
-                        <!-- NAME -->
+                        <td colspan="7"
+                            class="text-center text-muted py-5">
 
-                        <td>
+                            No portal users found.
 
-                            <strong>
-                                @user.FullName
-                            </strong>
-
-                        </td>
-
-
-                        <!-- EMAIL -->
-
-                        <td>
-                            @user.Email
-                        </td>
-
-
-                        <!-- ROLE -->
-
-                        <td>
-
-                            @if (user.Role == UserRole.Admin)
-                            {
-                                <span class="status-badge badge-assigned">
-                                    Admin
-                                </span>
-                            }
-                            else if (user.Role == UserRole.Maintenance)
-                            {
-                                <span class="status-badge badge-inprogress">
-                                    Maintenance
-                                </span>
-                            }
-                            else if (user.Role == UserRole.HallStaff)
-                            {
-                                <span class="status-badge badge-submitted">
-                                    Hall Staff
-                                </span>
-                            }
-
-                        </td>
-
-
-                        <!-- HALL -->
-
-                        <td>
-                            @(user.Hall ?? "—")
-                        </td>
-
-
-                        <!-- ROOM -->
-
-                        <td>
-                            @(user.RoomNumber ?? "—")
                         </td>
 
                     </tr>
+                }
+                else
+                {
+                    foreach (var item in Model)
+                    {
+                        var user = item.User;
+
+                        <tr>
+
+                            <td>
+
+                                <div class="fw-semibold">
+                                    @user.FullName
+                                </div>
+
+                            </td>
+
+                            <td>
+
+                                <span class="small">
+                                    @user.Email
+                                </span>
+
+                            </td>
+
+                            <td>
+
+                                @switch (item.Role)
+                                {
+                                    case UserRole.Admin:
+
+                                        <span class="badge bg-dark">
+                                            Administrator
+                                        </span>
+
+                                        break;
+
+                                    case UserRole.HallStaff:
+
+                                        <span class="badge bg-secondary">
+                                            Hall Staff
+                                        </span>
+
+                                        break;
+
+                                    case UserRole.Maintenance:
+
+                                        <span class="badge bg-info text-dark">
+                                            Maintenance
+                                        </span>
+
+                                        break;
+
+                                    default:
+
+                                        <span class="badge bg-secondary">
+                                            @item.Role
+                                        </span>
+
+                                        break;
+                                }
+
+                            </td>
+
+                            <td>
+
+                                @if (!string.IsNullOrWhiteSpace(user.Hall))
+                                {
+                                    <span>
+                                        @user.Hall
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">
+                                        —
+                                    </span>
+                                }
+
+                            </td>
+
+                            <td>
+
+                                @if (
+                                    item.Role == UserRole.Maintenance &&
+                                    user.MaintenanceSpecialization.HasValue
+                                )
+                                {
+                                    <span>
+                                        @user.MaintenanceSpecialization
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="text-muted">
+                                        —
+                                    </span>
+                                }
+
+                            </td>
+
+                            <td>
+
+                                @if (user.IsActive)
+                                {
+                                    <span class="badge bg-success">
+                                        Active
+                                    </span>
+                                }
+                                else
+                                {
+                                    <span class="badge bg-secondary">
+                                        Inactive
+                                    </span>
+                                }
+
+                            </td>
+
+                            <td>
+
+                                <div class="d-flex justify-content-end gap-2 flex-wrap">
+
+                                    <a asp-controller="Admin"
+                                       asp-action="EditUser"
+                                       asp-route-id="@user.Id"
+                                       class="btn btn-sm btn-outline-secondary">
+
+                                        Edit
+
+                                    </a>
+
+                                    @if (item.Role != UserRole.Admin)
+                                    {
+                                        <form asp-controller="Admin"
+                                              asp-action="ToggleActive"
+                                              method="post"
+                                              class="d-inline">
+
+                                            @Html.AntiForgeryToken()
+
+                                            <input type="hidden"
+                                                   name="id"
+                                                   value="@user.Id" />
+
+                                            @if (user.IsActive)
+                                            {
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-warning">
+
+                                                    Deactivate
+
+                                                </button>
+                                            }
+                                            else
+                                            {
+                                                <button type="submit"
+                                                        class="btn btn-sm btn-outline-success">
+
+                                                    Activate
+
+                                                </button>
+                                            }
+
+                                        </form>
+
+                                        <form asp-controller="Admin"
+                                              asp-action="DeleteUser"
+                                              method="post"
+                                              class="d-inline"
+                                              onsubmit="return confirm('Are you sure you want to permanently delete this user? This cannot be undone.');">
+
+                                            @Html.AntiForgeryToken()
+
+                                            <input type="hidden"
+                                                   name="id"
+                                                   value="@user.Id" />
+
+                                            <button type="submit"
+                                                    class="btn btn-sm btn-outline-danger">
+
+                                                Delete
+
+                                            </button>
+
+                                        </form>
+                                    }
+
+                                </div>
+
+                            </td>
+
+                        </tr>
+                    }
                 }
 
             </tbody>
 
         </table>
+
+    </div>
+
+</div>
+
+<div class="row g-4 mt-4">
+
+    <div class="col-md-4">
+
+        <div class="card-soft p-4 h-100">
+
+            <div class="section-title mb-2">
+                Hall Staff
+            </div>
+
+            <p class="small text-muted mb-0">
+                Hall staff manage complaints belonging to their
+                assigned hall and assign them to maintenance workers
+                within that hall.
+            </p>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="card-soft p-4 h-100">
+
+            <div class="section-title mb-2">
+                Maintenance
+            </div>
+
+            <p class="small text-muted mb-0">
+                Maintenance personnel see work assigned to them
+                and can update the progress and resolution of
+                maintenance complaints.
+            </p>
+
+        </div>
+
+    </div>
+
+    <div class="col-md-4">
+
+        <div class="card-soft p-4 h-100">
+
+            <div class="section-title mb-2">
+                Account Status
+            </div>
+
+            <p class="small text-muted mb-0">
+                Deactivate workers who are temporarily unavailable
+                without deleting their historical complaint records.
+            </p>
+
+        </div>
 
     </div>
 

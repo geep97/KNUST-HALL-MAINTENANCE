@@ -526,3 +526,14 @@ textarea.form-control {
         font-size: 1.45rem;
     }
 }
+
+
+.badge-overdue {
+    background: var(--knust-red-soft);
+    color: var(--knust-red);
+}
+
+.badge-attention {
+    background: var(--warning-soft);
+    color: var(--warning);
+}

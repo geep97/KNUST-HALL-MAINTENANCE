@@ -23,10 +23,6 @@
 
 <div class="row g-4">
 
-    <!-- =====================================================
-         MAIN FORM
-         ===================================================== -->
-
     <div class="col-lg-8">
 
         <div class="card-soft p-4">
@@ -43,9 +39,7 @@
                 @Html.AntiForgeryToken()
 
 
-                <!-- =================================================
-                     FULL NAME
-                     ================================================= -->
+                <!-- FULL NAME -->
 
                 <div class="mb-3">
 
@@ -65,9 +59,7 @@
                 </div>
 
 
-                <!-- =================================================
-                     EMAIL
-                     ================================================= -->
+                <!-- EMAIL -->
 
                 <div class="mb-3">
 
@@ -87,9 +79,7 @@
                 </div>
 
 
-                <!-- =================================================
-                     PASSWORD
-                     ================================================= -->
+                <!-- PASSWORD -->
 
                 <div class="mb-3">
 
@@ -107,18 +97,13 @@
                     </span>
 
                     <div class="form-text">
-
-                        The password will be securely hashed
-                        before it is stored.
-
+                        The password will be securely hashed before it is stored.
                     </div>
 
                 </div>
 
 
-                <!-- =================================================
-                     ROLE
-                     ================================================= -->
+                <!-- ROLE -->
 
                 <div class="mb-3">
 
@@ -156,11 +141,9 @@
                 </div>
 
 
-                <!-- =================================================
-                     HALL
-                     ================================================= -->
+                <!-- HALL -->
 
-                <div class="mb-4"
+                <div class="mb-3"
                      id="hallField">
 
                     <label asp-for="Hall"
@@ -195,9 +178,62 @@
                 </div>
 
 
-                <!-- =================================================
-                     BUTTONS
-                     ================================================= -->
+                <!-- MAINTENANCE SPECIALIZATION -->
+
+                <div class="mb-4"
+                     id="specializationField"
+                     style="display: none;">
+
+                    <label asp-for="MaintenanceSpecialization"
+                           class="form-label">
+                        Maintenance specialization
+                    </label>
+
+                    <select asp-for="MaintenanceSpecialization"
+                            class="form-select">
+
+                        <option value="">
+                            Select specialization
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.Electrical">
+                            Electrical
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.Plumbing">
+                            Plumbing
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.Carpentry">
+                            Carpentry
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.Masonry">
+                            Masonry
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.Painting">
+                            Painting
+                        </option>
+
+                        <option value="@MaintenanceSpecialization.GeneralMaintenance">
+                            General Maintenance
+                        </option>
+
+                    </select>
+
+                    <span asp-validation-for="MaintenanceSpecialization"
+                          class="text-danger small">
+                    </span>
+
+                    <div class="form-text">
+                        Specify the type of maintenance work this person handles.
+                    </div>
+
+                </div>
+
+
+                <!-- BUTTONS -->
 
                 <div class="d-flex gap-2 flex-wrap">
 
@@ -226,9 +262,7 @@
     </div>
 
 
-    <!-- =====================================================
-         INFORMATION PANEL
-         ===================================================== -->
+    <!-- INFORMATION PANEL -->
 
     <div class="col-lg-4">
 
@@ -238,41 +272,26 @@
                 Portal roles
             </div>
 
-
             <div class="small text-muted">
 
                 <p>
-
                     <strong>Hall Staff</strong>
-
                     <br />
-
                     Can review maintenance requests and assign
                     work to maintenance personnel in their hall.
-
                 </p>
 
-
                 <p>
-
                     <strong>Maintenance</strong>
-
                     <br />
-
                     Can view assigned work orders and update
                     their progress.
-
                 </p>
 
-
                 <p>
-
                     <strong>Administrator</strong>
-
                     <br />
-
                     Can manage portal users and system administration.
-
                 </p>
 
             </div>
@@ -302,3 +321,64 @@
 
 </div>
 
+
+@section Scripts {
+
+
+    <script>
+
+        document.addEventListener("DOMContentLoaded", function () {
+
+            const roleSelect =
+                document.getElementById("roleSelect");
+
+            const hallField =
+                document.getElementById("hallField");
+
+            const specializationField =
+                document.getElementById("specializationField");
+
+
+            function updateFields() {
+
+                const role =
+                    roleSelect.value;
+
+
+                // Hall Staff and Maintenance need a hall
+                if (
+                    role === "@UserRole.HallStaff" ||
+                    role === "@UserRole.Maintenance"
+                ) {
+                    hallField.style.display = "block";
+                }
+                else {
+                    hallField.style.display = "none";
+                }
+
+
+                // Only Maintenance needs specialization
+                if (
+                    role === "@UserRole.Maintenance"
+                ) {
+                    specializationField.style.display = "block";
+                }
+                else {
+                    specializationField.style.display = "none";
+                }
+
+            }
+
+
+            roleSelect.addEventListener(
+                "change",
+                updateFields
+            );
+
+
+            updateFields();
+
+        });
+
+    </script>
+}

@@ -8,28 +8,31 @@ public class ComplaintService : IComplaintService
 {
     private readonly ApplicationDbContext _context;
     private readonly IUserService _userService;
+    private readonly ComplaintSlaService _slaService;
 
     public ComplaintService(
         ApplicationDbContext context,
-        IUserService userService)
+        IUserService userService,
+        ComplaintSlaService slaService)
     {
         _context = context;
         _userService = userService;
+        _slaService = slaService;
     }
 
-
-    // =========================================================
-    // CREATE COMPLAINT
-    // =========================================================
-
-    public async Task<Complaint> CreateAsync(
-        Complaint complaint)
+    public async Task<Complaint> CreateAsync(Complaint complaint)
     {
-        complaint.Status =
-            ComplaintStatus.Submitted;
+        var now = DateTime.Now;
 
-        complaint.DateCreated =
-            DateTime.Now;
+        complaint.Status = ComplaintStatus.Submitted;
+        complaint.DateCreated = now;
+        complaint.LastActivityAt = now;
+        complaint.AssignedAt = null;
+        complaint.StartedAt = null;
+        complaint.DueAt = null;
+        complaint.DateResolved = null;
+        complaint.ResolutionConfirmed = null;
+        complaint.ResolutionConfirmedAt = null;
 
         _context.Complaints.Add(complaint);
 
@@ -38,369 +41,211 @@ public class ComplaintService : IComplaintService
         return complaint;
     }
 
-
-    // =========================================================
-    // GET STUDENT COMPLAINTS
-    // =========================================================
-
     public async Task<List<Complaint>> GetForStudentAsync(
         int studentId)
     {
         return await _context.Complaints
-
+            .AsSplitQuery()
+            .Include(c => c.AssignedTo)
+            .Include(c => c.Photos)
+            .Include(c => c.Updates)
+                .ThenInclude(u => u.UpdatedBy)
             .Where(c => c.StudentId == studentId)
-
             .OrderByDescending(c => c.DateCreated)
-
             .ToListAsync();
     }
-
-
-    // =========================================================
-    // GET ALL COMPLAINTS
-    // =========================================================
-    //
-    // Used by Admin.
-    //
-    // Hall Staff should NOT use this method.
-    // They should use GetForHallAsync().
-    // =========================================================
 
     public async Task<List<Complaint>> GetAllAsync(
         ComplaintStatus? statusFilter = null,
         ComplaintCategory? categoryFilter = null)
     {
-        var query =
-            _context.Complaints
-
-                .Include(c => c.Student)
-
-                .Include(c => c.AssignedTo)
-
-                .AsQueryable();
-
+        var query = _context.Complaints
+            .Include(c => c.Student)
+            .Include(c => c.AssignedTo)
+            .AsQueryable();
 
         if (statusFilter.HasValue)
         {
             query = query.Where(
-                c => c.Status == statusFilter.Value
-            );
+                c => c.Status == statusFilter.Value);
         }
-
 
         if (categoryFilter.HasValue)
         {
             query = query.Where(
-                c => c.Category == categoryFilter.Value
-            );
+                c => c.Category == categoryFilter.Value);
         }
 
-
         return await query
-
             .OrderByDescending(c => c.DateCreated)
-
             .ToListAsync();
     }
-
-
-    // =========================================================
-    // GET COMPLAINTS FOR A HALL
-    // =========================================================
-    //
-    // Hall Staff use this.
-    //
-    // Example:
-    //
-    // Unity Hall Staff
-    //     -> only Unity Hall complaints
-    //
-    // Independence Hall Staff
-    //     -> only Independence Hall complaints
-    // =========================================================
 
     public async Task<List<Complaint>> GetForHallAsync(
         string hall,
         ComplaintStatus? statusFilter = null,
         ComplaintCategory? categoryFilter = null)
     {
-        var query =
-            _context.Complaints
-
-                .Include(c => c.Student)
-
-                .Include(c => c.AssignedTo)
-
-                .Where(c => c.Hall == hall)
-
-                .AsQueryable();
-
+        var query = _context.Complaints
+            .Include(c => c.Student)
+            .Include(c => c.AssignedTo)
+            .Where(c => c.Hall == hall)
+            .AsQueryable();
 
         if (statusFilter.HasValue)
         {
             query = query.Where(
-                c => c.Status == statusFilter.Value
-            );
+                c => c.Status == statusFilter.Value);
         }
-
 
         if (categoryFilter.HasValue)
         {
             query = query.Where(
-                c => c.Category == categoryFilter.Value
-            );
+                c => c.Category == categoryFilter.Value);
         }
 
-
         return await query
-
             .OrderByDescending(c => c.DateCreated)
-
             .ToListAsync();
     }
-
-
-    // =========================================================
-    // GET MAINTENANCE WORK ORDERS
-    // =========================================================
-    //
-    // Maintenance personnel only see work assigned to them.
-    // =========================================================
 
     public async Task<List<Complaint>> GetAssignedToAsync(
         int maintenanceId,
         ComplaintStatus? statusFilter = null,
         ComplaintCategory? categoryFilter = null)
     {
-        var query =
-            _context.Complaints
-
-                .Include(c => c.Student)
-
-                .Include(c => c.AssignedTo)
-
-                .Where(
-                    c => c.AssignedToId == maintenanceId
-                )
-
-                .AsQueryable();
-
+        var query = _context.Complaints
+            .Include(c => c.Student)
+            .Include(c => c.AssignedTo)
+            .Where(c => c.AssignedToId == maintenanceId)
+            .AsQueryable();
 
         if (statusFilter.HasValue)
         {
             query = query.Where(
-                c => c.Status == statusFilter.Value
-            );
+                c => c.Status == statusFilter.Value);
         }
-
 
         if (categoryFilter.HasValue)
         {
             query = query.Where(
-                c => c.Category == categoryFilter.Value
-            );
+                c => c.Category == categoryFilter.Value);
         }
 
-
         return await query
-
             .OrderByDescending(c => c.DateCreated)
-
             .ToListAsync();
     }
 
-
-    // =========================================================
-    // GET COMPLAINT BY ID
-    // =========================================================
-
-    public async Task<Complaint?> GetByIdAsync(
-        int id)
+    public async Task<Complaint?> GetByIdAsync(int id)
     {
         return await _context.Complaints
-
+            .AsSplitQuery()
             .Include(c => c.Student)
-
             .Include(c => c.AssignedTo)
-
+            .Include(c => c.Photos)
             .Include(c => c.Updates)
                 .ThenInclude(u => u.UpdatedBy)
-
-            .FirstOrDefaultAsync(
-                c => c.Id == id
-            );
+            .FirstOrDefaultAsync(c => c.Id == id);
     }
-
-
-    // =========================================================
-    // ASSIGN COMPLAINT
-    // =========================================================
-    //
-    // Hall Staff can only assign a complaint to a
-    // Maintenance person belonging to the SAME hall.
-    //
-    // Example:
-    //
-    // Independence Hall complaint
-    //       ↓
-    // Independence Hall Staff
-    //       ↓
-    // Independence Hall Technician
-    //
-    // Cross-hall assignment is rejected.
-    // =========================================================
 
     public async Task<bool> AssignAsync(
         int complaintId,
         int staffId,
         int assignToId)
     {
-        var complaint =
-            await _context.Complaints
-                .FirstOrDefaultAsync(
-                    c => c.Id == complaintId
-                );
-
+        var complaint = await _context.Complaints
+            .FirstOrDefaultAsync(c => c.Id == complaintId);
 
         if (complaint == null)
         {
             return false;
         }
 
-
-        // =====================================================
-        // GET HALL STAFF
-        // =====================================================
-
-        var staff =
-            await _userService.GetByIdAsync(
-                staffId
-            );
-
+        var staff = await _userService.GetByIdAsync(staffId);
 
         if (staff == null)
         {
             return false;
         }
 
+        var isHallStaff = await _userService.IsInRoleAsync(
+            staff,
+            UserRole.HallStaff);
 
-        // Must actually be Hall Staff.
-        if (staff.Role != UserRole.HallStaff)
+        if (!isHallStaff)
         {
             return false;
         }
 
-
-        // Hall Staff must have a hall.
         if (string.IsNullOrWhiteSpace(staff.Hall))
         {
             return false;
         }
 
-
-        // =====================================================
-        // VERIFY STAFF OWNS THE COMPLAINT'S HALL
-        // =====================================================
-
-        if (
-            !string.Equals(
+        if (!string.Equals(
                 staff.Hall,
                 complaint.Hall,
-                StringComparison.OrdinalIgnoreCase
-            )
-        )
+                StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
-
-        // =====================================================
-        // GET TECHNICIAN
-        // =====================================================
-
-        var assignee =
-            await _userService.GetByIdAsync(
-                assignToId
-            );
-
+        var assignee = await _userService.GetByIdAsync(assignToId);
 
         if (assignee == null)
         {
             return false;
         }
 
+        var isMaintenance = await _userService.IsInRoleAsync(
+            assignee,
+            UserRole.Maintenance);
 
-        // Must be Maintenance personnel.
-        if (
-            assignee.Role != UserRole.Maintenance
-        )
+        if (!isMaintenance)
         {
             return false;
         }
 
-
-        // Technician must have a hall.
-        if (
-            string.IsNullOrWhiteSpace(
-                assignee.Hall
-            )
-        )
+        if (string.IsNullOrWhiteSpace(assignee.Hall))
         {
             return false;
         }
 
-
-        // =====================================================
-        // VERIFY TECHNICIAN BELONGS TO SAME HALL
-        // =====================================================
-
-        if (
-            !string.Equals(
+        if (!string.Equals(
                 assignee.Hall,
                 complaint.Hall,
-                StringComparison.OrdinalIgnoreCase
-            )
-        )
+                StringComparison.OrdinalIgnoreCase))
         {
             return false;
         }
 
+        var now = DateTime.Now;
 
-        // =====================================================
-        // ASSIGN
-        // =====================================================
+        complaint.AssignedToId = assignToId;
+        complaint.Status = ComplaintStatus.Assigned;
+        complaint.AssignedAt = now;
+        complaint.StartedAt = null;
+        complaint.DueAt = _slaService.CalculateDueAt(
+            complaint.Category,
+            now);
+        complaint.LastActivityAt = now;
+        complaint.DateResolved = null;
+        complaint.ResolutionConfirmed = null;
+        complaint.ResolutionConfirmedAt = null;
 
-        complaint.AssignedToId =
-            assignToId;
-
-        complaint.Status =
-            ComplaintStatus.Assigned;
-
-
-        _context.ComplaintUpdates.Add(
-            new ComplaintUpdate
-            {
-                ComplaintId = complaintId,
-
-                UpdatedById = staffId,
-
-                Note =
-                    $"Assigned to {assignee.FullName}.",
-
-                Timestamp = DateTime.Now
-            }
-        );
-
+        _context.ComplaintUpdates.Add(new ComplaintUpdate
+        {
+            ComplaintId = complaintId,
+            UpdatedById = staffId,
+            Note = $"Assigned to {assignee.FullName}.",
+            Timestamp = now
+        });
 
         await _context.SaveChangesAsync();
 
         return true;
     }
-
-
-    // =========================================================
-    // UPDATE STATUS
-    // =========================================================
 
     public async Task<bool> UpdateStatusAsync(
         int complaintId,
@@ -408,54 +253,101 @@ public class ComplaintService : IComplaintService
         string? note,
         int updatedById)
     {
-        var complaint =
-            await _context.Complaints
-                .FindAsync(complaintId);
+        var complaint = await _context.Complaints
+            .FirstOrDefaultAsync(c => c.Id == complaintId);
 
-
-        if (
-            complaint == null ||
-            complaint.AssignedToId != updatedById
-        )
+        if (complaint == null)
         {
             return false;
         }
 
-
-        complaint.Status =
-            status;
-
-
-        if (
-            status == ComplaintStatus.Resolved
-        )
+        if (complaint.AssignedToId != updatedById)
         {
-            complaint.DateResolved =
-                DateTime.Now;
+            return false;
+        }
+
+        var now = DateTime.Now;
+
+        if (status == ComplaintStatus.InProgress &&
+            complaint.StartedAt == null)
+        {
+            complaint.StartedAt = now;
+        }
+
+        complaint.Status = status;
+        complaint.LastActivityAt = now;
+
+        if (status == ComplaintStatus.Resolved)
+        {
+            complaint.DateResolved = now;
+            complaint.ResolutionConfirmed = null;
+            complaint.ResolutionConfirmedAt = null;
         }
         else
         {
-            complaint.DateResolved =
-                null;
+            complaint.DateResolved = null;
+            complaint.ResolutionConfirmed = null;
+            complaint.ResolutionConfirmedAt = null;
         }
 
+        _context.ComplaintUpdates.Add(new ComplaintUpdate
+        {
+            ComplaintId = complaintId,
+            UpdatedById = updatedById,
+            Note = string.IsNullOrWhiteSpace(note)
+                ? $"Status changed to {status}."
+                : note,
+            Timestamp = now
+        });
 
-        _context.ComplaintUpdates.Add(
-            new ComplaintUpdate
-            {
-                ComplaintId = complaintId,
+        await _context.SaveChangesAsync();
 
-                UpdatedById = updatedById,
+        return true;
+    }
 
-                Note =
-                    string.IsNullOrWhiteSpace(note)
-                        ? $"Status changed to {status}."
-                        : note,
+    public async Task<bool> ConfirmResolutionAsync(
+        int complaintId,
+        int studentId,
+        bool confirmed,
+        string? note)
+    {
+        var complaint = await _context.Complaints
+            .FirstOrDefaultAsync(c =>
+                c.Id == complaintId &&
+                c.StudentId == studentId);
 
-                Timestamp = DateTime.Now
-            }
-        );
+        if (complaint == null)
+        {
+            return false;
+        }
 
+        if (complaint.Status != ComplaintStatus.Resolved)
+        {
+            return false;
+        }
+
+        if (complaint.ResolutionConfirmed == true)
+        {
+            return false;
+        }
+
+        var now = DateTime.Now;
+
+        complaint.ResolutionConfirmed = confirmed;
+        complaint.ResolutionConfirmedAt = now;
+        complaint.LastActivityAt = now;
+
+        if (confirmed)
+        {
+            complaint.Status = ComplaintStatus.Resolved;
+            complaint.DateResolved ??= now;
+        }
+        else
+        {
+            complaint.Status = ComplaintStatus.InProgress;
+            complaint.DateResolved = null;
+            complaint.ResolutionConfirmed = false;
+        }
 
         await _context.SaveChangesAsync();
 

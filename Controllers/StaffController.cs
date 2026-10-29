@@ -6,77 +6,36 @@ using Microsoft.AspNetCore.Mvc;
 
 namespace KnustHallMaintenance.Controllers;
 
-
-// =========================================================
-// STAFF + MAINTENANCE CONTROLLER
-// =========================================================
-//
-// Hall Staff and Maintenance personnel share this dashboard.
-//
-// Hall Staff:
-// - See complaints belonging to their hall
-// - Open complaint details
-// - Assign complaints to maintenance personnel from their hall
-//
-// Maintenance:
-// - See only work orders assigned to them
-// - Open assigned complaint details
-// - Update work-order status
-//
-// =========================================================
-
 [Authorize(Roles = "HallStaff,Maintenance")]
 public class StaffController : Controller
 {
     private readonly IComplaintService _complaintService;
     private readonly IUserService _userService;
-
+    private readonly ComplaintSlaService _slaService;
 
     public StaffController(
         IComplaintService complaintService,
-        IUserService userService)
+        IUserService userService,
+        ComplaintSlaService slaService)
     {
         _complaintService = complaintService;
         _userService = userService;
+        _slaService = slaService;
     }
-
-
-    // =========================================================
-    // CURRENT USER ID
-    // =========================================================
 
     private int CurrentUserId =>
         int.Parse(
-            User.FindFirstValue(
-                ClaimTypes.NameIdentifier
-            )!
+            User.FindFirstValue(ClaimTypes.NameIdentifier)!
         );
-
-
-    // =========================================================
-    // STAFF / MAINTENANCE DASHBOARD
-    // =========================================================
 
     public async Task<IActionResult> Index(
         ComplaintStatus? status,
         ComplaintCategory? category)
     {
         var isMaintenance =
-            User.IsInRole(
-                nameof(UserRole.Maintenance)
-            );
-
+            User.IsInRole(nameof(UserRole.Maintenance));
 
         List<Complaint> complaints;
-
-
-        // =====================================================
-        // MAINTENANCE PERSONNEL
-        // =====================================================
-        //
-        // Maintenance personnel only see work orders assigned
-        // directly to them.
-        // =====================================================
 
         if (isMaintenance)
         {
@@ -84,211 +43,131 @@ public class StaffController : Controller
                 await _complaintService.GetAssignedToAsync(
                     CurrentUserId,
                     status,
-                    category
-                );
+                    category);
         }
-
-
-        // =====================================================
-        // HALL STAFF
-        // =====================================================
-        //
-        // Hall Staff only see complaints belonging to their
-        // assigned hall.
-        // =====================================================
-
         else
         {
             var hall =
                 User.FindFirstValue("Hall");
-
 
             if (string.IsNullOrWhiteSpace(hall))
             {
                 return Forbid();
             }
 
-
             complaints =
                 await _complaintService.GetForHallAsync(
                     hall,
                     status,
-                    category
-                );
+                    category);
         }
 
-
-        // =====================================================
-        // DASHBOARD FILTERS
-        // =====================================================
-
-        ViewBag.StatusFilter =
-            status;
-
-        ViewBag.CategoryFilter =
-            category;
-
-        ViewBag.IsMaintenance =
-            isMaintenance;
-
-
-        // =====================================================
-        // DASHBOARD COUNTS
-        // =====================================================
+        ViewBag.StatusFilter = status;
+        ViewBag.CategoryFilter = category;
+        ViewBag.IsMaintenance = isMaintenance;
 
         ViewBag.SubmittedCount =
             complaints.Count(
-                c =>
-                    c.Status ==
-                    ComplaintStatus.Submitted
-            );
-
+                c => c.Status == ComplaintStatus.Submitted);
 
         ViewBag.AssignedCount =
             complaints.Count(
-                c =>
-                    c.Status ==
-                    ComplaintStatus.Assigned
-            );
-
+                c => c.Status == ComplaintStatus.Assigned);
 
         ViewBag.InProgressCount =
             complaints.Count(
-                c =>
-                    c.Status ==
-                    ComplaintStatus.InProgress
-            );
-
+                c => c.Status == ComplaintStatus.InProgress);
 
         ViewBag.ResolvedCount =
             complaints.Count(
-                c =>
-                    c.Status ==
-                    ComplaintStatus.Resolved
-            );
+                c => c.Status == ComplaintStatus.Resolved);
 
+        ViewBag.OverdueCount =
+            complaints.Count(
+                c => _slaService.IsOverdue(c));
 
-        return View(
+        ViewBag.NeedsAttentionCount =
+            complaints.Count(
+                c => _slaService.NeedsAttention(c));
+
+        var overdueComplaints =
             complaints
-        );
+                .Where(c => _slaService.IsOverdue(c))
+                .OrderBy(c => c.DueAt)
+                .ToList();
+
+        var attentionComplaints =
+            complaints
+                .Where(c =>
+                    !_slaService.IsOverdue(c) &&
+                    _slaService.NeedsAttention(c))
+                .OrderBy(c => c.LastActivityAt)
+                .ToList();
+
+        ViewBag.OverdueComplaints =
+            overdueComplaints;
+
+        ViewBag.AttentionComplaints =
+            attentionComplaints;
+
+        foreach (var complaint in complaints)
+        {
+            ViewData[$"Overdue_{complaint.Id}"] =
+                _slaService.IsOverdue(complaint);
+
+            ViewData[$"NeedsAttention_{complaint.Id}"] =
+                _slaService.NeedsAttention(complaint);
+        }
+
+        return View(complaints);
     }
 
-
-    // =========================================================
-    // COMPLAINT DETAILS
-    // =========================================================
-
-    public async Task<IActionResult> Details(
-        int id)
+    public async Task<IActionResult> Details(int id)
     {
         var complaint =
-            await _complaintService.GetByIdAsync(
-                id
-            );
-
+            await _complaintService.GetByIdAsync(id);
 
         if (complaint == null)
         {
             return NotFound();
         }
 
-
-        // =====================================================
-        // MAINTENANCE ACCESS
-        // =====================================================
-        //
-        // Maintenance personnel can only open complaints
-        // assigned to themselves.
-        // =====================================================
-
-        if (
-            User.IsInRole(
-                nameof(UserRole.Maintenance)
-            )
-            &&
-            complaint.AssignedToId !=
-            CurrentUserId
-        )
+        if (User.IsInRole(nameof(UserRole.Maintenance)) &&
+            complaint.AssignedToId != CurrentUserId)
         {
             return Forbid();
         }
 
-
-        // =====================================================
-        // HALL STAFF ACCESS
-        // =====================================================
-        //
-        // Hall Staff can only open complaints belonging to
-        // their own hall.
-        // =====================================================
-
-        if (
-            User.IsInRole(
-                nameof(UserRole.HallStaff)
-            )
-        )
+        if (User.IsInRole(nameof(UserRole.HallStaff)))
         {
             var hall =
                 User.FindFirstValue("Hall");
 
-
-            if (
-                string.IsNullOrWhiteSpace(hall)
-                ||
+            if (string.IsNullOrWhiteSpace(hall) ||
                 !string.Equals(
                     hall,
                     complaint.Hall,
-                    StringComparison.OrdinalIgnoreCase
-                )
-            )
+                    StringComparison.OrdinalIgnoreCase))
             {
                 return Forbid();
             }
         }
 
-
         ViewBag.IsMaintenance =
-            User.IsInRole(
-                nameof(UserRole.Maintenance)
-            );
+            User.IsInRole(nameof(UserRole.Maintenance));
 
+        ViewBag.IsOverdue =
+            _slaService.IsOverdue(complaint);
 
-        // =====================================================
-        // MAINTENANCE STAFF
-        // =====================================================
-        //
-        // Used by Hall Staff when assigning a complaint.
-        //
-        // The service layer will also verify that the selected
-        // technician belongs to the same hall.
-        // =====================================================
+        ViewBag.NeedsAttention =
+            _slaService.NeedsAttention(complaint);
 
         ViewBag.MaintenanceStaff =
-            await _userService
-                .GetMaintenanceStaffAsync();
+            await _userService.GetMaintenanceStaffAsync(
+                complaint.Hall);
 
-
-        return View(
-            complaint
-        );
+        return View(complaint);
     }
-
-
-    // =========================================================
-    // ASSIGN COMPLAINT
-    // =========================================================
-    //
-    // Only Hall Staff can assign complaints.
-    //
-    // The ComplaintService performs the final security check
-    // to ensure:
-    //
-    // Hall Staff hall == Complaint hall
-    //
-    // and
-    //
-    // Technician hall == Complaint hall
-    // =========================================================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -301,36 +180,20 @@ public class StaffController : Controller
             await _complaintService.AssignAsync(
                 complaintId,
                 CurrentUserId,
-                assignToId
-            );
-
+                assignToId);
 
         if (!assigned)
         {
             return Forbid();
         }
 
-
         TempData["Success"] =
             "Maintenance request assigned successfully.";
 
-
         return RedirectToAction(
             nameof(Details),
-            new
-            {
-                id = complaintId
-            }
-        );
+            new { id = complaintId });
     }
-
-
-    // =========================================================
-    // UPDATE WORK ORDER STATUS
-    // =========================================================
-    //
-    // Only Maintenance personnel can update status.
-    // =========================================================
 
     [HttpPost]
     [ValidateAntiForgeryToken]
@@ -340,43 +203,28 @@ public class StaffController : Controller
         ComplaintStatus status,
         string? note)
     {
-        // A maintenance technician cannot move
-        // a complaint back to Submitted.
-        if (
-            status ==
-            ComplaintStatus.Submitted
-        )
+        if (status == ComplaintStatus.Submitted)
         {
             return BadRequest();
         }
 
-
         var updated =
-            await _complaintService
-                .UpdateStatusAsync(
-                    complaintId,
-                    status,
-                    note,
-                    CurrentUserId
-                );
-
+            await _complaintService.UpdateStatusAsync(
+                complaintId,
+                status,
+                note,
+                CurrentUserId);
 
         if (!updated)
         {
             return Forbid();
         }
 
-
         TempData["Success"] =
             "Work order updated.";
 
-
         return RedirectToAction(
             nameof(Details),
-            new
-            {
-                id = complaintId
-            }
-        );
+            new { id = complaintId });
     }
 }

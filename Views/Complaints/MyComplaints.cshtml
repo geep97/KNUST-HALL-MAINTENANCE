@@ -1,37 +1,109 @@
 @model List<Complaint>
+
 @{
     ViewData["Title"] = "My Requests";
 }
 
 <div class="page-header d-flex justify-content-between align-items-end flex-wrap gap-3">
+
     <div>
-        <div class="eyebrow">Student Services</div>
-        <h2>My Maintenance Requests</h2>
-        <p>Track issues you have reported to your hall.</p>
+        <div class="eyebrow">
+            Student Services
+        </div>
+
+        <h2>
+            My Maintenance Requests
+        </h2>
+
+        <p>
+            Track issues you have reported to your hall.
+        </p>
     </div>
-    <a asp-controller="Complaints" asp-action="Create" class="btn btn-knust">Report an Issue</a>
+
+    <a asp-controller="Complaints"
+       asp-action="Create"
+       class="btn btn-knust">
+        Report an Issue
+    </a>
+
 </div>
 
 <div class="row g-3 mb-4">
-    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">Total</div><div class="metric-value">@Model.Count</div><div class="metric-note">Requests submitted</div></div></div>
-    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">Submitted</div><div class="metric-value">@Model.Count(c => c.Status == ComplaintStatus.Submitted)</div><div class="metric-note">Awaiting assignment</div></div></div>
-    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">In Progress</div><div class="metric-value">@Model.Count(c => c.Status == ComplaintStatus.InProgress)</div><div class="metric-note">Being worked on</div></div></div>
-    <div class="col-6 col-lg-3"><div class="metric-card"><div class="metric-label">Resolved</div><div class="metric-value">@Model.Count(c => c.Status == ComplaintStatus.Resolved)</div><div class="metric-note">Completed requests</div></div></div>
+
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="metric-label">Total</div>
+            <div class="metric-value">@Model.Count</div>
+            <div class="metric-note">Requests submitted</div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="metric-label">Submitted</div>
+            <div class="metric-value">
+                @Model.Count(c => c.Status == ComplaintStatus.Submitted)
+            </div>
+            <div class="metric-note">
+                Awaiting assignment
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="metric-label">In Progress</div>
+            <div class="metric-value">
+                @Model.Count(c => c.Status == ComplaintStatus.InProgress)
+            </div>
+            <div class="metric-note">
+                Being worked on
+            </div>
+        </div>
+    </div>
+
+    <div class="col-6 col-lg-3">
+        <div class="metric-card">
+            <div class="metric-label">Resolved</div>
+            <div class="metric-value">
+                @Model.Count(c => c.Status == ComplaintStatus.Resolved)
+            </div>
+            <div class="metric-note">
+                Awaiting or completed confirmation
+            </div>
+        </div>
+    </div>
+
 </div>
 
 @if (!Model.Any())
 {
     <div class="card-soft p-5 text-center">
-        <div class="section-title mb-1">No maintenance requests yet</div>
-        <p class="text-muted mb-3">Report a faulty light, plumbing issue, damaged furniture or another hall facility problem.</p>
-        <a asp-controller="Complaints" asp-action="Create" class="btn btn-knust">Report an Issue</a>
+
+        <div class="section-title mb-1">
+            No maintenance requests yet
+        </div>
+
+        <p class="text-muted mb-3">
+            Report a faulty light, plumbing issue, damaged furniture or another hall facility problem.
+        </p>
+
+        <a asp-controller="Complaints"
+           asp-action="Create"
+           class="btn btn-knust">
+            Report an Issue
+        </a>
+
     </div>
 }
 else
 {
     <div class="card-soft table-shell">
+
         <table class="table align-middle">
+
             <thead>
+
                 <tr>
                     <th>Request</th>
                     <th>Category</th>
@@ -40,23 +112,81 @@ else
                     <th>Status</th>
                     <th></th>
                 </tr>
+
             </thead>
+
             <tbody>
-            @foreach (var c in Model)
-            {
-                <tr class="complaint-row">
-                    <td>
-                        <div class="fw-semibold">#@c.Id</div>
-                        <div class="small text-muted">@c.Description</div>
-                    </td>
-                    <td>@c.Category</td>
-                    <td>@c.Hall · Room @c.RoomNumber</td>
-                    <td>@c.DateCreated.ToString("dd MMM yyyy")</td>
-                    <td><span class="status-badge @StatusBadgeHelper.CssClass(c.Status)">@StatusBadgeHelper.Display(c.Status)</span></td>
-                    <td class="text-end"><a asp-action="Details" asp-route-id="@c.Id" class="btn btn-sm btn-outline-secondary">View</a></td>
-                </tr>
-            }
+
+                @foreach (var c in Model)
+                {
+                    <tr class="complaint-row">
+
+                        <td>
+
+                            <div class="fw-semibold">
+                                #@c.Id
+                            </div>
+
+                            <div class="small text-muted">
+                                @c.Description
+                            </div>
+
+                        </td>
+
+                        <td>
+                            @c.Category
+                        </td>
+
+                        <td>
+                            @c.Hall · Room @c.RoomNumber
+                        </td>
+
+                        <td>
+                            @c.DateCreated.ToString("dd MMM yyyy")
+                        </td>
+
+                        <td>
+
+                            <div class="d-flex flex-column align-items-start gap-1">
+
+                                <span class="status-badge @StatusBadgeHelper.CssClass(c.Status)">
+                                    @StatusBadgeHelper.Display(c.Status)
+                                </span>
+
+                                @if (c.Status == ComplaintStatus.Resolved &&
+                                     c.ResolutionConfirmed != true)
+                                {
+                                    <span class="status-badge badge-attention">
+                                        Awaiting confirmation
+                                    </span>
+                                }
+                                else if (c.ResolutionConfirmed == true)
+                                {
+                                    <span class="status-badge badge-resolved">
+                                        Confirmed
+                                    </span>
+                                }
+
+                            </div>
+
+                        </td>
+
+                        <td class="text-end">
+
+                            <a asp-action="Details"
+                               asp-route-id="@c.Id"
+                               class="btn btn-sm btn-outline-secondary">
+                                View
+                            </a>
+
+                        </td>
+
+                    </tr>
+                }
+
             </tbody>
+
         </table>
+
     </div>
 }

@@ -7,12 +7,25 @@ public enum UserRole
     Maintenance = 2
 }
 
-public enum ComplaintCategory
+public enum MaintenanceSpecialization
 {
     Electrical,
     Plumbing,
-    Furniture,
+    Carpentry,
+    Masonry,
+    Painting,
+    GeneralMaintenance
+}
+
+public enum ComplaintCategory
+{
+    Plumbing,
+    Electrical,
+    Carpentry,
+    Masonry,
+    Painting,
     Structural,
+    Furniture,
     Other
 }
 
