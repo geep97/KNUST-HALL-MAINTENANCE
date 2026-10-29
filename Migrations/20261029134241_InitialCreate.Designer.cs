@@ -12,8 +12,8 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace KnustHallMaintenance.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20260816235904_MigrateApplicationUserToIdentity")]
-    partial class MigrateApplicationUserToIdentity
+    [Migration("20261029134241_InitialCreate")]
+    partial class InitialCreate
     {
         /// <inheritdoc />
         protected override void BuildTargetModel(ModelBuilder modelBuilder)
@@ -121,6 +121,9 @@ namespace KnustHallMaintenance.Migrations
 
                     SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
 
+                    b.Property<DateTime?>("AssignedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<int?>("AssignedToId")
                         .HasColumnType("int");
 
@@ -137,16 +140,31 @@ namespace KnustHallMaintenance.Migrations
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<DateTime?>("DueAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("Hall")
                         .IsRequired()
-                        .HasColumnType("nvarchar(max)");
+                        .HasColumnType("nvarchar(450)");
+
+                    b.Property<DateTime?>("LastActivityAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<string>("PhotoPath")
                         .HasColumnType("nvarchar(max)");
 
+                    b.Property<bool?>("ResolutionConfirmed")
+                        .HasColumnType("bit");
+
+                    b.Property<DateTime?>("ResolutionConfirmedAt")
+                        .HasColumnType("datetime2");
+
                     b.Property<string>("RoomNumber")
                         .IsRequired()
                         .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime?>("StartedAt")
+                        .HasColumnType("datetime2");
 
                     b.Property<int>("Status")
                         .HasColumnType("int");
@@ -156,11 +174,38 @@ namespace KnustHallMaintenance.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("AssignedToId");
+                    b.HasIndex("AssignedToId", "DateCreated");
 
-                    b.HasIndex("StudentId");
+                    b.HasIndex("Hall", "DateCreated");
+
+                    b.HasIndex("StudentId", "DateCreated");
 
                     b.ToTable("Complaints");
+                });
+
+            modelBuilder.Entity("KnustHallMaintenance.Models.ComplaintPhoto", b =>
+                {
+                    b.Property<int>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("int");
+
+                    SqlServerPropertyBuilderExtensions.UseIdentityColumn(b.Property<int>("Id"));
+
+                    b.Property<int>("ComplaintId")
+                        .HasColumnType("int");
+
+                    b.Property<string>("PhotoPath")
+                        .IsRequired()
+                        .HasColumnType("nvarchar(max)");
+
+                    b.Property<DateTime>("UploadedAt")
+                        .HasColumnType("datetime2");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ComplaintId");
+
+                    b.ToTable("ComplaintPhotos");
                 });
 
             modelBuilder.Entity("KnustHallMaintenance.Models.ComplaintUpdate", b =>
@@ -186,9 +231,9 @@ namespace KnustHallMaintenance.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("ComplaintId");
-
                     b.HasIndex("UpdatedById");
+
+                    b.HasIndex("ComplaintId", "Timestamp");
 
                     b.ToTable("ComplaintUpdates");
                 });
@@ -413,6 +458,17 @@ namespace KnustHallMaintenance.Migrations
                     b.Navigation("Student");
                 });
 
+            modelBuilder.Entity("KnustHallMaintenance.Models.ComplaintPhoto", b =>
+                {
+                    b.HasOne("KnustHallMaintenance.Models.Complaint", "Complaint")
+                        .WithMany("Photos")
+                        .HasForeignKey("ComplaintId")
+                        .OnDelete(DeleteBehavior.Cascade)
+                        .IsRequired();
+
+                    b.Navigation("Complaint");
+                });
+
             modelBuilder.Entity("KnustHallMaintenance.Models.ComplaintUpdate", b =>
                 {
                     b.HasOne("KnustHallMaintenance.Models.Complaint", "Complaint")
@@ -490,6 +546,8 @@ namespace KnustHallMaintenance.Migrations
 
             modelBuilder.Entity("KnustHallMaintenance.Models.Complaint", b =>
                 {
+                    b.Navigation("Photos");
+
                     b.Navigation("Updates");
                 });
 #pragma warning restore 612, 618
